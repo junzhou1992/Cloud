@@ -16,6 +16,12 @@ import com.iflytek.aiui.AIUIEvent;
 import com.iflytek.aiui.AIUIListener;
 import com.iflytek.aiui.AIUIMessage;
 
+import com.iflytek.cloud.ErrorCode;
+import com.iflytek.cloud.SpeechConstant;
+import com.iflytek.cloud.SpeechError;
+import com.iflytek.cloud.SpeechSynthesizer;
+import com.iflytek.cloud.SynthesizerListener;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -32,8 +38,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 
     private AIUIAgent mAIUIAgent = null;
-    private String mSyncSid = "";
     private int mAIUIState = AIUIConstant.STATE_IDLE;
+
+    private SpeechSynthesizer mTts;
 
 
     @Override
@@ -66,15 +73,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.btn_startnlp:// 语法理解
                 nlptest();
                 break;
+            case R.id. btn_startspeektext:// 语音合成（把文字转声音）
+                speekText();
+                break;
 
         }
 
     }
 
     private void nlptest(){
-        showTip("duihua");
+
         createAgent();
         startVoiceNlp();
+
 
 /*        Intent intent = null;
         intent = new Intent(MainActivity.this, TestActivity.class);
@@ -86,18 +97,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void createAgent() {
         if (null == mAIUIAgent) {
-            //Log.i(TAG, "create aiui agent");
+            LogUtil.i(TAG,getString(R.string.createAIUI));
             mAIUIAgent = AIUIAgent.createAgent(this, getAIUIParams(), mAIUIListener);
         }
 
         if (null == mAIUIAgent) {
             final String strErrorTip = "创建AIUIAgent失败！";
-            LogUtil.i(TAG,strErrorTip);
-            //showTip(strErrorTip);
+            LogUtil.e(TAG,strErrorTip);
             this.et_input.setText(strErrorTip);
         } else {
             LogUtil.i(TAG,"AIUIAgent已创建");
-            //showTip("AIUIAgent已创建");
+            
         }
     }
 
@@ -140,181 +150,98 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         @Override
         public void onEvent(AIUIEvent event) {
-            Log.i( TAG,  "on event: " + event.eventType );
+            LogUtil.i( TAG,  "on event: " + event.eventType );
 
             switch (event.eventType) {
+                //已连接服务器
                 case AIUIConstant.EVENT_CONNECTED_TO_SERVER:
-                    showTip("已连接服务器");
+                    LogUtil.i(TAG,getString(R.string.connectedServer));
                     break;
 
+                //已服务器断开
                 case AIUIConstant.EVENT_SERVER_DISCONNECTED:
-                    showTip("与服务器断连");
+                    LogUtil.e(TAG,getString(R.string.disconnectedServer));
                     break;
 
                 //唤醒事件
                 case AIUIConstant.EVENT_WAKEUP:
-                    showTip( "进入识别状态" );
+                   LogUtil.i(TAG,getString(R.string.enterEventWakeUp));
                     break;
 
                 //结果事件
                 case AIUIConstant.EVENT_RESULT: {
-                    try {
-                        //LogUtil.e(TAG,event.info);
-                        JSONObject bizParamJson = new JSONObject(event.info);
-                        JSONObject data = bizParamJson.getJSONArray("data").getJSONObject(0);
-                        JSONObject params = data.getJSONObject("params");
-                        JSONObject content = data.getJSONArray("content").getJSONObject(0);
-
-                        if (content.has("cnt_id")) {
-                            String cnt_id = content.getString("cnt_id");
-                            String cntStr = new String(event.data.getByteArray(cnt_id), "utf-8");
-                            //String(byte[] bytes, Charset charset) 通过使用指定的 charset 解码指定的 byte 数组，构造一个新的 String。
-                            //public byte[] getByteArray (String key)  功能：获取key对应的byte数组
-
-
-                            // 获取该路会话的id，将其提供给支持人员，有助于问题排查
-                            // 也可以从Json结果中看到
-                            String sid = event.data.getString("sid");
-
-                            // 获取从数据发送完到获取结果的耗时，单位：ms
-                            // 也可以通过键名"bos_rslt"获取从开始发送数据到获取结果的耗时
-                            long eosRsltTime = event.data.getLong("eos_rslt", -1);//获取key对应的long值  没找到 则返回默认值
-                            //mTimeSpentText.setText(eosRsltTime + "ms");
-
-                            if (TextUtils.isEmpty(cntStr)) {
-                                return;
-                            }
-                            //LogUtil.e(TAG,cntStr);
-                            JSONObject cntJson = new JSONObject(cntStr);
-
-                            if (et_input.getLineCount() > 1000) {
-                                et_input.setText("");
-                            }
-
-                           // et_input.append( "\n" );
-                           // et_input.append(cntJson.toString());
-                           // et_input.setSelection(et_input.getText().length());
-
-                            String sub = params.optString("sub");
-
-
-                            if ("nlp".equals(sub)) {
-                                // 解析得到语义结果
-                                String resultStr = cntJson.optString("intent");
-                                JSONObject intent1 = cntJson.getJSONObject("intent");
-
-                               int i = intent1.length();
-
-                                //Log.e( TAG, resultStr );
-                                //Log.e( TAG, String.valueOf(i) );
-                                if ( i != 0) {
-                                    String text;
-                                    String question = intent1.optString("text");
-
-                                    if (intent1.has("answer")) {
-                                        String answer2 = intent1.optString("answer");
-                                        JSONObject answer = new JSONObject(answer2);
-                                        text = answer.optString("text");
-                                        //只是当无返回值时，getString(String name)抛出错误，optString(String name)返回空值
-
-                                        et_input.append(question + ":" + text);
-                                        et_input.append("\n");
-                                        //et_input.setSelection(et_input.getText().length());
-                                    } else {
-                                        text = "你的问题太难了";
-                                        et_input.append(question + ":" + text);
-                                        et_input.append("\n");
-                                    }
-                                }
-
-                            }
-                        }
-                    } catch (Throwable e) {
-                        e.printStackTrace();
-                       // et_input.append( "\n" );
-                       // et_input.append( e.getLocalizedMessage());
+                    LogUtil.i(TAG,getString(R.string.enterResultEvent));
+                    String info = event.info;
+                    Bundle aiuIdata = event.data;
+                    String result;
+                    if (et_input.getLineCount() > 1000) {
+                       et_input.setText("");
                     }
+                    result = Nlp.parseNlsrResult(aiuIdata,info);
+                    et_input.append(result);
+                    stopVoiceNlp();
+                    speekText();
+                    //startVoiceNlp();
 
-                   // et_input.append( "\n" );
                 } break;
 
                 //错误事件
                 case AIUIConstant.EVENT_ERROR: {
+                    LogUtil.e(TAG,getString(R.string.enterErrorEvent));
                     et_input.append( "\n" );
                     et_input.append( "错误: " + event.arg1+"\n" + event.info );
+                    //arg1字段为错误码，info字段为错误描述信息
                 } break;
 
+                //VAD事件   当arg1取值为1时，arg2为音量大小。
                 case AIUIConstant.EVENT_VAD: {
+                    LogUtil.i(TAG,getString(R.string.enterVADevent));
                     if (AIUIConstant.VAD_BOS == event.arg1) {
-                        showTip("找到vad_bos");
+                        LogUtil.i(TAG,getString(R.string.vad_bos));
                     } else if (AIUIConstant.VAD_EOS == event.arg1) {
-                        showTip("找到vad_eos");
+                        LogUtil.i(TAG,getString(R.string.vad_eos));
                     } else {
-                        showTip("" + event.arg2);
+                        LogUtil.i(TAG,"" + event.arg2);//音量大小
                     }
                 } break;
 
+
                 case AIUIConstant.EVENT_START_RECORD: {
+                    LogUtil.i(TAG,getString(R.string.START_RECORD));
                     showTip("已开始录音");
                 } break;
 
                 case AIUIConstant.EVENT_STOP_RECORD: {
+                    LogUtil.i(TAG,getString(R.string.STOP_RECORD));
                     showTip("已停止录音");
                 } break;
 
-                case AIUIConstant.EVENT_STATE: {	// 状态事件
+                //服务状态事件  当向AIUI发送CMD_GET_STATE命令时抛出该事件
+                case AIUIConstant.EVENT_STATE: {
+                    LogUtil.i(TAG,getString(R.string.enterStateEvent));
+
                     mAIUIState = event.arg1;
 
                     if (AIUIConstant.STATE_IDLE == mAIUIState) {
                         // 闲置状态，AIUI未开启
+                        LogUtil.i(TAG,getString(R.string.STATE_IDLE));
                         showTip("STATE_IDLE");
                     } else if (AIUIConstant.STATE_READY == mAIUIState) {
                         // AIUI已就绪，等待唤醒
+                        LogUtil.i(TAG,getString(R.string.STATE_READY));
                         showTip("STATE_READY");
                     } else if (AIUIConstant.STATE_WORKING == mAIUIState) {
                         // AIUI工作中，可进行交互
+                        LogUtil.i(TAG,getString(R.string.STATE_WORKING));
                         showTip("STATE_WORKING");
                     }
                 } break;
 
+                //某条CMD命令对应的返回事件  对于除CMD_GET_STATE外的有返回的命令，都会返回该事件
+                //用arg1标识对应的CMD命令，arg2为返回值
                 case AIUIConstant.EVENT_CMD_RETURN: {
-                    if (AIUIConstant.CMD_SYNC == event.arg1) {	// 数据同步的返回
-                        int dtype = event.data.getInt("sync_dtype", -1);
-                        int retCode = event.arg2;
+                    LogUtil.i(TAG,getString(R.string.enterCMD_RETURNTevent));
 
-                        switch (dtype) {
-                            case AIUIConstant.SYNC_DATA_SCHEMA: {
-                                if (AIUIConstant.SUCCESS == retCode) {
-                                    // 上传成功，记录上传会话的sid，以用于查询数据打包状态
-                                    // 注：上传成功并不表示数据打包成功，打包成功与否应以同步状态查询结果为准，数据只有打包成功后才能正常使用
-                                    mSyncSid = event.data.getString("sid");
-
-                                    // 获取上传调用时设置的自定义tag
-                                    String tag = event.data.getString("tag");
-
-                                    // 获取上传调用耗时，单位：ms
-                                    long timeSpent = event.data.getLong("time_spent", -1);
-                                    if (-1 != timeSpent) {
-                                        //mTimeSpentText.setText(timeSpent + "ms");
-                                    }
-
-                                    showTip("上传成功，sid=" + mSyncSid + "，tag=" + tag + "，你可以试着说“打电话给刘德华”");
-                                } else {
-                                    mSyncSid = "";
-                                    showTip("上传失败，错误码：" + retCode);
-                                }
-                            } break;
-                        }
-                    } else if (AIUIConstant.CMD_QUERY_SYNC_STATUS == event.arg1) {	// 数据同步状态查询的返回
-                        // 获取同步类型
-                        int syncType = event.data.getInt("sync_dtype", -1);
-                        if (AIUIConstant.SYNC_DATA_QUERY == syncType) {
-                            // 若是同步数据查询，则获取查询结果，结果中error字段为0则表示上传数据打包成功，否则为错误码
-                            String result = event.data.getString("result");
-
-                            showTip(result);
-                        }
-                    }
                 } break;
 
                 default:
@@ -326,11 +253,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void startVoiceNlp(){
         if (null == mAIUIAgent) {
+            LogUtil.e( TAG, "AIUIAgent为空，请先创建" );
             showTip("AIUIAgent为空，请先创建");
             return;
         }
 
-        Log.i( TAG, "start voice nlp" );
+        LogUtil.i( TAG, "start voice nlp" );
         et_input.setText("");
 
         // 先发送唤醒消息，改变AIUI内部状态，只有唤醒状态才能接收语音输入
@@ -344,9 +272,94 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         // 个性化资源使用方法可参见http://doc.xfyun.cn/aiui_mobile/的用户个性化章节
         String params = "sample_rate=16000,data_type=audio,pers_param={\"uid\":\"\"}";
         AIUIMessage startRecord = new AIUIMessage(AIUIConstant.CMD_START_RECORD, 0, 0, params, null);
-
         mAIUIAgent.sendMessage(startRecord);
     }
+
+    private void stopVoiceNlp(){
+        if (null == mAIUIAgent) {
+            showTip("AIUIAgent 为空，请先创建");
+            return;
+        }
+        LogUtil.i(TAG,"stop voice nlp");
+        // 停止录音
+        String params = "sample_rate=16000,data_type=audio";
+        AIUIMessage stopRecord = new AIUIMessage(AIUIConstant.CMD_STOP_RECORD, 0, 0, params, null);
+
+        mAIUIAgent.sendMessage(stopRecord);
+    }
+
+    private void speekText() {
+        //1. 创建 SpeechSynthesizer 对象 , 第二个参数： 本地合成时传 InitListener
+         mTts = SpeechSynthesizer.createSynthesizer( this, null);
+//2.合成参数设置，详见《 MSC Reference Manual》 SpeechSynthesizer 类
+//设置发音人（更多在线发音人，用户可参见 附录 13.2
+        mTts.setParameter(SpeechConstant. VOICE_NAME, "vixyun" ); // 设置发音人
+        mTts.setParameter(SpeechConstant. SPEED, "50" );// 设置语速
+        mTts.setParameter(SpeechConstant. VOLUME, "80" );// 设置音量，范围 0~100
+        mTts.setParameter(SpeechConstant. ENGINE_TYPE, SpeechConstant. TYPE_CLOUD); //设置云端
+//设置合成音频保存位置（可自定义保存位置），保存在 “./sdcard/iflytek.pcm”
+//保存在 SD 卡需要在 AndroidManifest.xml 添加写 SD 卡权限
+//仅支持保存为 pcm 和 wav 格式， 如果不需要保存合成音频，注释该行代码
+        mTts.setParameter(SpeechConstant. TTS_AUDIO_PATH, "./sdcard/iflytek.pcm" );
+//3.开始合成
+        int code = mTts.startSpeaking( et_input.getText().toString(), new MySynthesizerListener()) ;
+        if (code != ErrorCode.SUCCESS) {
+            showTip("语音合成失败,错误码: " + code);
+        }
+
+
+    }
+
+    class MySynthesizerListener implements SynthesizerListener {
+
+        @Override
+        public void onSpeakBegin() {
+            showTip(" 开始播放 ");
+        }
+
+        @Override
+        public void onSpeakPaused() {
+            showTip(" 暂停播放 ");
+        }
+
+        @Override
+        public void onSpeakResumed() {
+            showTip(" 继续播放 ");
+        }
+
+        @Override
+        public void onBufferProgress(int percent, int beginPos, int endPos ,
+                                     String info) {
+            // 合成进度
+        }
+
+        @Override
+        public void onSpeakProgress(int percent, int beginPos, int endPos) {
+            // 播放进度
+        }
+
+        @Override
+        public void onCompleted(SpeechError error) {
+            if (error == null) {
+                showTip("播放完成 ");
+                startVoiceNlp();
+               // mTts.stopSpeaking();
+            } else if (error != null ) {
+                showTip(error.getPlainDescription( true));
+            }
+        }
+
+        @Override
+        public void onEvent(int eventType, int arg1 , int arg2, Bundle obj) {
+            // 以下代码用于获取与云端的会话 id，当业务出错时将会话 id提供给技术支持人员，可用于查询会话日志，定位出错原因
+            // 若使用本地能力，会话 id为null
+            //if (SpeechEvent.EVENT_SESSION_ID == eventType) {
+            //     String sid = obj.getString(SpeechEvent.KEY_EVENT_SESSION_ID);
+            //     Log.d(TAG, "session id =" + sid);
+            //}
+        }
+    }
+
 
 
 

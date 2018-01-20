@@ -2,4 +2,23 @@
     <string name="app_name">xunfeiCloud</string>
     <!-- 请替换成在语音云官网申请的appid -->
     <string name="app_id">58c65dd3</string>
+    <string name="noanswer">你的问题太难了，无法回答</string>
+    <string name="createAIUI">创建AIUIAgent</string>
+    <string name="connectedServer">已连接服务器</string>
+    <string name="disconnectedServer">与服务器断开</string>
+    <string name="enterEventWakeUp">进入识别状态</string>
+    <string name="enterResultEvent">进入结果事件</string>
+    <string name="enterErrorEvent">进入错误事件</string>
+    <string name="enterVADevent">进入VAD事件</string>
+    <string name="enterStateEvent">进入服务状态事件</string>
+    <string name="enterCMD_RETURNTevent">进入CMD命令对应的返回事件</string>
+    <string name="vad_bos">找到vad_bos前端点</string>
+    <string name="vad_eos">找到vad_eos后端点</string>
+    <string name="START_RECORD">已开始录音</string>
+    <string name="STOP_RECORD">已停止录音</string>
+    <string name="STATE_IDLE">空闲状态</string>
+    <string name="STATE_READY">就绪状态（待唤醒）</string>
+    <string name="STATE_WORKING">工作状态</string>
+
+
 </resources>
