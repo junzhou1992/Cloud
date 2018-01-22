@@ -17,8 +17,8 @@
         android:hint="请输入信息"/>
 
     <Button
-        android:id="@+id/btn_startspeech"
-        android:text="点击按钮语音输入"
+        android:id="@+id/btn_cacelnlp"
+        android:text="取消语义理解"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 

@@ -19,6 +19,11 @@
     <string name="STATE_IDLE">空闲状态</string>
     <string name="STATE_READY">就绪状态（待唤醒）</string>
     <string name="STATE_WORKING">工作状态</string>
+    <string name="StartPlay">开始播放</string>
+    <string name="PausePlay">暂停播放</string>
+    <string name="ContinuePlay">继续播放</string>
+    <string name="PlayCompleted">播放完成</string>
+
 
 
 </resources>

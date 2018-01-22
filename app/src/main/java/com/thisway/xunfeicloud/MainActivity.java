@@ -34,7 +34,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Toast mToast;
 
     private EditText et_input;
-    private Button btn_startspeech, btn_startspeektext,btn_startrecognize,btn_startnlp ;
+    private Button btn_celnlp, btn_startspeektext,btn_startrecognize,btn_startnlp ;
 
 
     private AIUIAgent mAIUIAgent = null;
@@ -48,6 +48,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
         initView() ;
+        createAgent();
+        speekText("您好,请问您有什么问题");
 
 
     }
@@ -55,12 +57,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void initView() {
         setContentView(R.layout.activity_main) ;
         et_input = (EditText) findViewById(R.id.et_input );
-        btn_startspeech = (Button) findViewById(R.id.btn_startspeech );
+        btn_celnlp= (Button) findViewById(R.id.btn_cacelnlp );
         btn_startspeektext = (Button) findViewById(R.id.btn_startspeektext );
         btn_startrecognize = (Button) findViewById(R.id.btn_startrecognize );
         btn_startnlp = (Button) findViewById(R.id.btn_startnlp );
 
-        btn_startspeech .setOnClickListener(this) ;
+        btn_celnlp .setOnClickListener(this) ;
         btn_startspeektext .setOnClickListener(this) ;
         btn_startrecognize.setOnClickListener(this);
         btn_startnlp.setOnClickListener(this);
@@ -70,30 +72,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onClick(View view) {
         switch (view.getId()){
-            case R.id.btn_startnlp:// 语法理解
-                nlptest();
+            case R.id.btn_cacelnlp:// 取消语法理解
+                stopVoiceNlp();
                 break;
+            case R.id.btn_startnlp:// 语法理解
+                startVoiceNlp();
+                break;
+
             case R.id. btn_startspeektext:// 语音合成（把文字转声音）
-                speekText();
+                String text = et_input.getText().toString();
+                speekText(text);
                 break;
 
         }
 
     }
 
-    private void nlptest(){
-
-        createAgent();
-        startVoiceNlp();
-
-
-/*        Intent intent = null;
-        intent = new Intent(MainActivity.this, TestActivity.class);
-        if (intent != null) {
-            startActivity(intent);
-       }*/
-
-    }
 
     private void createAgent() {
         if (null == mAIUIAgent) {
@@ -107,7 +101,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             this.et_input.setText(strErrorTip);
         } else {
             LogUtil.i(TAG,"AIUIAgent已创建");
-            
+
         }
     }
 
@@ -165,23 +159,81 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                 //唤醒事件
                 case AIUIConstant.EVENT_WAKEUP:
-                   LogUtil.i(TAG,getString(R.string.enterEventWakeUp));
+                    LogUtil.i(TAG,getString(R.string.enterEventWakeUp));
                     break;
 
                 //结果事件
                 case AIUIConstant.EVENT_RESULT: {
                     LogUtil.i(TAG,getString(R.string.enterResultEvent));
-                    String info = event.info;
-                    Bundle aiuIdata = event.data;
-                    String result;
-                    if (et_input.getLineCount() > 1000) {
-                       et_input.setText("");
+                    try {
+                        String text = null;
+                        //data字段携带结果数据，info字段为描述数据的JSON字符串
+                        JSONObject bizParamJson = new JSONObject(event.info);
+                        JSONObject data = bizParamJson.getJSONArray("data").getJSONObject(0);
+                        JSONObject params = data.getJSONObject("params");
+                        JSONObject content = data.getJSONArray("content").getJSONObject(0);
+
+                        if (content.has("cnt_id")) {
+                            String cnt_id = content.getString("cnt_id");
+                            String cntStr = new String(event.data.getByteArray(cnt_id), "utf-8");
+                            //String(byte[] bytes, Charset charset) 通过使用指定的 charset 解码指定的 byte 数组，构造一个新的 String。
+                            //public byte[] getByteArray (String key)  功能：获取key对应的byte数组
+
+                            // 获取该路会话的id，将其提供给支持人员，有助于问题排查
+                            // 也可以从Json结果中看到
+                            String sid = event.data.getString("sid");
+
+                            // 获取从数据发送完到获取结果的耗时，单位：ms
+                            // 也可以通过键名"bos_rslt"获取从开始发送数据到获取结果的耗时
+                            long eosRsltTime = event.data.getLong("eos_rslt", -1);//获取key对应的long值  没找到 则返回默认值
+                            //mTimeSpentText.setText(eosRsltTime + "ms");
+
+                            if (TextUtils.isEmpty(cntStr)) {
+                               // ret.append("该会话出错"+sid);
+                                return;
+                            }
+
+                            JSONObject cntJson = new JSONObject(cntStr);
+
+                            if (et_input.getLineCount() > 1000) {
+                                et_input.setText("");
+                            }
+
+                            String sub = params.optString("sub");
+
+                            if ("nlp".equals(sub)) {
+                                // 解析得到语义结果
+                                String resultStr = cntJson.optString("intent");
+                                LogUtil.i( TAG, resultStr );
+                                JSONObject intent1 = cntJson.getJSONObject("intent");
+                                int i = intent1.length();
+
+                                if ( i != 0) {
+                                    String question = intent1.optString("text");
+                                    if (intent1.has("answer")) {
+                                        String answer2 = intent1.optString("answer");
+                                        JSONObject answer = new JSONObject(answer2);
+                                        text = answer.optString("text");
+                                        //只是当无返回值时，getString(String name)抛出错误，optString(String name)返回空值
+                                    } else {
+                                        text = getString(R.string.noanswer);
+                                    }
+                                    et_input.append(question + ":" + text);
+                                }
+
+                                //第四次进入结果事件
+                                //不判断的话  会出现无效文本  20009错误
+                                if (i ==0)
+                                {
+                                    stopVoiceNlp();
+                                    speekText(et_input.getText().toString());
+                                }
+                            }
+                        }
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                        et_input.append(e.getLocalizedMessage());
                     }
-                    result = Nlp.parseNlsrResult(aiuIdata,info);
-                    et_input.append(result);
-                    stopVoiceNlp();
-                    speekText();
-                    //startVoiceNlp();
 
                 } break;
 
@@ -288,9 +340,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mAIUIAgent.sendMessage(stopRecord);
     }
 
-    private void speekText() {
+    private void speekText(String text) {
         //1. 创建 SpeechSynthesizer 对象 , 第二个参数： 本地合成时传 InitListener
-         mTts = SpeechSynthesizer.createSynthesizer( this, null);
+        mTts = SpeechSynthesizer.createSynthesizer( this, null);
 //2.合成参数设置，详见《 MSC Reference Manual》 SpeechSynthesizer 类
 //设置发音人（更多在线发音人，用户可参见 附录 13.2
         mTts.setParameter(SpeechConstant. VOICE_NAME, "vixyun" ); // 设置发音人
@@ -302,8 +354,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //仅支持保存为 pcm 和 wav 格式， 如果不需要保存合成音频，注释该行代码
         mTts.setParameter(SpeechConstant. TTS_AUDIO_PATH, "./sdcard/iflytek.pcm" );
 //3.开始合成
-        int code = mTts.startSpeaking( et_input.getText().toString(), new MySynthesizerListener()) ;
+        //String text = et_input.getText().toString();
+        int code = mTts.startSpeaking( text, new MySynthesizerListener()) ;
         if (code != ErrorCode.SUCCESS) {
+            LogUtil.e(TAG,"语音合成失败,错误码: " + code);
             showTip("语音合成失败,错误码: " + code);
         }
 
@@ -314,17 +368,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         @Override
         public void onSpeakBegin() {
-            showTip(" 开始播放 ");
+            showTip(getString(R.string.StartPlay));
+            LogUtil.i(TAG,getString(R.string.StartPlay));
         }
 
         @Override
         public void onSpeakPaused() {
-            showTip(" 暂停播放 ");
+            //showTip(" 暂停播放 ");
+            LogUtil.i(TAG,getString(R.string.PausePlay));
         }
 
         @Override
         public void onSpeakResumed() {
-            showTip(" 继续播放 ");
+            //showTip(" 继续播放 ");
+            LogUtil.i(TAG,getString(R.string.ContinuePlay));
         }
 
         @Override
@@ -341,9 +398,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         public void onCompleted(SpeechError error) {
             if (error == null) {
-                showTip("播放完成 ");
+                showTip(getString(R.string.PlayCompleted));
+                LogUtil.i(TAG,getString(R.string.PlayCompleted));
+                //mTts.stopSpeaking();
                 startVoiceNlp();
-               // mTts.stopSpeaking();
+                
             } else if (error != null ) {
                 showTip(error.getPlainDescription( true));
             }
