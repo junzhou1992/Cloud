@@ -1,5 +1,7 @@
 package com.thisway.xunfeicloud;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.AssetManager;
@@ -49,6 +51,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private int mAIUIState = AIUIConstant.STATE_IDLE;
 
     private SpeechSynthesizer mTts;
+    private String voicer = "xiaoyan";  // 默认发音人
+
+    private String[] mCloudVoicersEntries;
+    private String[] mCloudVoicersValue ;
 
 
     @Override
@@ -86,6 +92,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     showTip("请前往xfyun.cn下载离线合成体验");
                 }
                 break;
+
+            case R.id.person_select:
+                 showPresonSelectDialog();
+                break;
+
             default:
         }
         return true;
@@ -384,6 +395,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void speekText(String text) {
         //1. 创建 SpeechSynthesizer 对象 , 第二个参数： 本地合成时传 InitListener
         mTts = SpeechSynthesizer.createSynthesizer( this, null);
+        // 云端发音人名称列表
+        mCloudVoicersEntries = getResources().getStringArray(R.array.voicer_cloud_entries);
+        mCloudVoicersValue = getResources().getStringArray(R.array.voicer_cloud_values);
 //2.合成参数设置，详见《 MSC Reference Manual》 SpeechSynthesizer 类
 //设置发音人（更多在线发音人，用户可参见 附录 13.2
         setParam();
@@ -474,7 +488,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if(mEngineType.equals(SpeechConstant.TYPE_CLOUD)) {
             mTts.setParameter(SpeechConstant.ENGINE_TYPE, SpeechConstant.TYPE_CLOUD);
             // 设置在线合成发音人
-            mTts.setParameter(SpeechConstant.VOICE_NAME,"vixyun");
+            mTts.setParameter(SpeechConstant.VOICE_NAME,voicer);
             //设置合成语速
             String yusu = mSharedPreferences.getString("speed_preference", "50");
             LogUtil.e("yusu",yusu);
@@ -497,6 +511,27 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         // 注：AUDIO_FORMAT参数语记需要更新版本才能生效
         mTts.setParameter(SpeechConstant.AUDIO_FORMAT, "wav");
         mTts.setParameter(SpeechConstant.TTS_AUDIO_PATH, Environment.getExternalStorageDirectory()+"/msc/tts.wav");
+    }
+
+    private int selectedNum = 0;
+    /**
+     * 发音人选择。
+     */
+    private void showPresonSelectDialog() {
+
+            // 在线合成发音人选择
+                new AlertDialog.Builder(this).setTitle("在线合成发音人选项")
+                        .setSingleChoiceItems(mCloudVoicersEntries, // 单选框有几项,各是什么名字
+                                selectedNum, // 默认的选项
+                                new DialogInterface.OnClickListener() { // 点击单选框后的处理
+                                    public void onClick(DialogInterface dialog,
+                                                        int which) { // 点击了哪一项
+                                        voicer = mCloudVoicersValue[which];
+                                        selectedNum = which;
+                                        dialog.dismiss();
+                                    }
+                                }).show();
+
     }
 
 

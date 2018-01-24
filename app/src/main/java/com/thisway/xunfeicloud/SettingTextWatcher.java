@@ -35,8 +35,6 @@ public class SettingTextWatcher implements TextWatcher {
 //		Log.e("demo", "onTextChanged start:"+start+" count:"+count+" before:"+before);
 		editStart = start;
 		editCount = count;
-		LogUtil.i(TAG,""+editCount);
-		LogUtil.i(TAG,""+editStart);
 	}
 	
 	@Override
@@ -64,7 +62,7 @@ public class SettingTextWatcher implements TextWatcher {
 			mEditTextPreference.getEditText().setText(s);
 			Toast.makeText(mContext, "只能输入数字哦", Toast.LENGTH_SHORT).show();
 		}
-		LogUtil.e(TAG,""+num);
+		LogUtil.i(TAG,""+num);
 	}
 	
 	/**

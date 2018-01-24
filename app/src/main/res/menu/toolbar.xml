@@ -12,4 +12,10 @@
         android:icon="@drawable/ic_settings"
         android:title="Settings"
         app:showAsAction="ifRoom"/>
+    <item
+        android:id="@+id/person_select"
+        android:icon="@drawable/voicer"
+        android:title="Person_select"
+        app:showAsAction="ifRoom"/>
+
 </menu>
