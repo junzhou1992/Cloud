@@ -1,10 +1,17 @@
 package com.thisway.xunfeicloud;
 
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.res.AssetManager;
+import android.os.Environment;
+import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -32,11 +39,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private Toast mToast;
+    private SharedPreferences mSharedPreferences;
 
     private EditText et_input;
     private Button btn_celnlp, btn_startspeektext,btn_startrecognize,btn_startnlp ;
 
-
+    private String mEngineType = SpeechConstant.TYPE_CLOUD;
     private AIUIAgent mAIUIAgent = null;
     private int mAIUIState = AIUIConstant.STATE_IDLE;
 
@@ -46,21 +54,54 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mSharedPreferences = getSharedPreferences(settingFragment.PREFER_NAME, MODE_PRIVATE);
         mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
         initView() ;
         createAgent();
         speekText("您好,请问您有什么问题");
 
-
     }
+
+
+
+    //重写onCreateOptionsMenu方法
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.toolbar, menu);
+        return true;
+    }
+
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.backup:
+                Toast.makeText(this, "You clicked backup", Toast.LENGTH_SHORT).show();
+                break;
+
+            case R.id.settings:
+                if(SpeechConstant.TYPE_CLOUD.equals(mEngineType)){
+                    Intent intent = new Intent(MainActivity.this, settingActivity.class);
+                    startActivity(intent);
+                }else{
+                    showTip("请前往xfyun.cn下载离线合成体验");
+                }
+                break;
+            default:
+        }
+        return true;
+    }
+
 
     private void initView() {
         setContentView(R.layout.activity_main) ;
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toobar);
+        setSupportActionBar(toolbar);
         et_input = (EditText) findViewById(R.id.et_input );
         btn_celnlp= (Button) findViewById(R.id.btn_cacelnlp );
         btn_startspeektext = (Button) findViewById(R.id.btn_startspeektext );
         btn_startrecognize = (Button) findViewById(R.id.btn_startrecognize );
         btn_startnlp = (Button) findViewById(R.id.btn_startnlp );
+
 
         btn_celnlp .setOnClickListener(this) ;
         btn_startspeektext .setOnClickListener(this) ;
@@ -345,14 +386,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mTts = SpeechSynthesizer.createSynthesizer( this, null);
 //2.合成参数设置，详见《 MSC Reference Manual》 SpeechSynthesizer 类
 //设置发音人（更多在线发音人，用户可参见 附录 13.2
-        mTts.setParameter(SpeechConstant. VOICE_NAME, "vixyun" ); // 设置发音人
-        mTts.setParameter(SpeechConstant. SPEED, "50" );// 设置语速
-        mTts.setParameter(SpeechConstant. VOLUME, "80" );// 设置音量，范围 0~100
-        mTts.setParameter(SpeechConstant. ENGINE_TYPE, SpeechConstant. TYPE_CLOUD); //设置云端
+        setParam();
+
+       // mTts.setParameter(SpeechConstant. VOICE_NAME, "vixyun" ); // 设置发音人
+       // mTts.setParameter(SpeechConstant. SPEED, "50" );// 设置语速
+        //mTts.setParameter(SpeechConstant. VOLUME, "80" );// 设置音量，范围 0~100
+        //mTts.setParameter(SpeechConstant. ENGINE_TYPE, SpeechConstant. TYPE_CLOUD); //设置云端
 //设置合成音频保存位置（可自定义保存位置），保存在 “./sdcard/iflytek.pcm”
 //保存在 SD 卡需要在 AndroidManifest.xml 添加写 SD 卡权限
 //仅支持保存为 pcm 和 wav 格式， 如果不需要保存合成音频，注释该行代码
-        mTts.setParameter(SpeechConstant. TTS_AUDIO_PATH, "./sdcard/iflytek.pcm" );
+        //mTts.setParameter(SpeechConstant. TTS_AUDIO_PATH, "./sdcard/iflytek.pcm" );
 //3.开始合成
         //String text = et_input.getText().toString();
         int code = mTts.startSpeaking( text, new MySynthesizerListener()) ;
@@ -402,7 +445,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 LogUtil.i(TAG,getString(R.string.PlayCompleted));
                 //mTts.stopSpeaking();
                 startVoiceNlp();
-                
+
             } else if (error != null ) {
                 showTip(error.getPlainDescription( true));
             }
@@ -417,6 +460,43 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             //     Log.d(TAG, "session id =" + sid);
             //}
         }
+    }
+
+
+    /**
+     * 参数设置
+     * @return
+     */
+    private void setParam(){
+        // 清空参数
+        mTts.setParameter(SpeechConstant.PARAMS, null);
+        // 根据合成引擎设置相应参数
+        if(mEngineType.equals(SpeechConstant.TYPE_CLOUD)) {
+            mTts.setParameter(SpeechConstant.ENGINE_TYPE, SpeechConstant.TYPE_CLOUD);
+            // 设置在线合成发音人
+            mTts.setParameter(SpeechConstant.VOICE_NAME,"vixyun");
+            //设置合成语速
+            String yusu = mSharedPreferences.getString("speed_preference", "50");
+            LogUtil.e("yusu",yusu);
+            mTts.setParameter(SpeechConstant.SPEED,yusu );
+
+            //mTts.setParameter(SpeechConstant.SPEED, mSharedPreferences.getString("speed_preference", "50"));
+            //设置合成音调
+            mTts.setParameter(SpeechConstant.PITCH, mSharedPreferences.getString("pitch_preference", "50"));
+            //设置合成音量
+            mTts.setParameter(SpeechConstant.VOLUME, mSharedPreferences.getString("volume_preference", "50"));
+        }
+
+
+        //设置播放器音频流类型
+        mTts.setParameter(SpeechConstant.STREAM_TYPE, mSharedPreferences.getString("stream_preference", "3"));
+        // 设置播放合成音频打断音乐播放，默认为true
+        mTts.setParameter(SpeechConstant.KEY_REQUEST_FOCUS, "true");
+
+        // 设置音频保存路径，保存音频格式支持pcm、wav，设置路径为sd卡请注意WRITE_EXTERNAL_STORAGE权限
+        // 注：AUDIO_FORMAT参数语记需要更新版本才能生效
+        mTts.setParameter(SpeechConstant.AUDIO_FORMAT, "wav");
+        mTts.setParameter(SpeechConstant.TTS_AUDIO_PATH, Environment.getExternalStorageDirectory()+"/msc/tts.wav");
     }
 
 

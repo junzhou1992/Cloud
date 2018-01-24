@@ -24,23 +24,23 @@
     <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
 
     <application
+        android:name=".MyApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-
-        android:name="com.thisway.xunfeicloud.MyApplication"
-
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".MainActivity">
+        <activity
+            android:name=".MainActivity"
+            android:label="@string/mainActivity_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-
-
+        <activity android:name=".settingActivity">
+        </activity>
     </application>
 
 </manifest>

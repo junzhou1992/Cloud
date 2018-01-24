@@ -1,7 +1,9 @@
 <resources>
     <string name="app_name">xunfeiCloud</string>
+    <string name="mainActivity_name">语音交互</string>
     <!-- 请替换成在语音云官网申请的appid -->
     <string name="app_id">58c65dd3</string>
+
     <string name="noanswer">你的问题太难了，无法回答</string>
     <string name="createAIUI">创建AIUIAgent</string>
     <string name="connectedServer">已连接服务器</string>
@@ -23,7 +25,6 @@
     <string name="PausePlay">暂停播放</string>
     <string name="ContinuePlay">继续播放</string>
     <string name="PlayCompleted">播放完成</string>
-
 
 
 </resources>
