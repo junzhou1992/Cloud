@@ -23,6 +23,8 @@
     <!-- 配置权限，用来记录应用配置信息 -->
     <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
 
+    <uses-permission android:name="android.permission.CAMERA"/>
+
     <application
         android:name=".MyApplication"
         android:allowBackup="true"
@@ -31,15 +33,17 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name=".MainActivity"
+            android:name=".SpeechActivity"
             android:label="@string/mainActivity_name">
+        </activity>
+        <activity android:name=".settingActivity">
+        </activity>
+        <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-        </activity>
-        <activity android:name=".settingActivity">
         </activity>
     </application>
 

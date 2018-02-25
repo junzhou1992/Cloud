@@ -1,546 +1,225 @@
 package com.thisway.xunfeicloud;
 
-import android.app.AlertDialog;
-import android.content.DialogInterface;
+import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.content.res.AssetManager;
-import android.os.Environment;
-import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.support.v7.widget.Toolbar;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
+import android.view.SurfaceView;
 import android.widget.Toast;
 
-import com.iflytek.aiui.AIUIAgent;
-import com.iflytek.aiui.AIUIConstant;
-import com.iflytek.aiui.AIUIEvent;
-import com.iflytek.aiui.AIUIListener;
-import com.iflytek.aiui.AIUIMessage;
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.CameraBridgeViewBase;
+import org.opencv.android.LoaderCallbackInterface;
+import org.opencv.android.OpenCVLoader;
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfRect;
+import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
+import org.opencv.core.Size;
+import org.opencv.imgproc.Imgproc;
+import org.opencv.objdetect.CascadeClassifier;
 
-import com.iflytek.cloud.ErrorCode;
-import com.iflytek.cloud.SpeechConstant;
-import com.iflytek.cloud.SpeechError;
-import com.iflytek.cloud.SpeechSynthesizer;
-import com.iflytek.cloud.SynthesizerListener;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
 
-    private static final String TAG = MainActivity.class.getSimpleName();
-    private Toast mToast;
-    private SharedPreferences mSharedPreferences;
+    private static final String TAG  = "OpenCV";
 
-    private EditText et_input;
-    private Button btn_celnlp, btn_startspeektext,btn_startrecognize,btn_startnlp ;
+    private File  mCascadeFile;
+    private CascadeClassifier      mJavaDetector;
+    private boolean   mIsFrontCamera = false;
+    private MenuItem mItemSwitchCamera = null;
 
-    private String mEngineType = SpeechConstant.TYPE_CLOUD;
-    private AIUIAgent mAIUIAgent = null;
-    private int mAIUIState = AIUIConstant.STATE_IDLE;
 
-    private SpeechSynthesizer mTts;
-    private String voicer = "xiaoyan";  // 默认发音人
+    private Mat  mRgba;
 
-    private String[] mCloudVoicersEntries;
-    private String[] mCloudVoicersValue ;
-
+    private CameraBridgeViewBase mOpenCvCameraView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mSharedPreferences = getSharedPreferences(settingFragment.PREFER_NAME, MODE_PRIVATE);
-        mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
-        initView() ;
-        createAgent();
-        speekText("您好,请问您有什么问题");
+        setContentView(R.layout.activity_main);
 
+        mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.java_surface_view);
+        mOpenCvCameraView.setVisibility(CameraBridgeViewBase.VISIBLE);
+        mOpenCvCameraView.setCvCameraViewListener(this);
+        mOpenCvCameraView.setCameraIndex(1);//为了使用前置摄像头  要不然一直是后置摄像头
     }
 
 
+    private BaseLoaderCallback mOpenCVCallBack = new BaseLoaderCallback(this) {
+        @Override
+        public void onManagerConnected(int status) {
+            switch (status) {
+                case LoaderCallbackInterface.SUCCESS:
+                    //DO YOUR WORK/STUFF HERE
+                {
+                    Log.i(TAG, "OpenCV loaded successfully");
 
-    //重写onCreateOptionsMenu方法
+                    // Load native library after(!) OpenCV initialization
+                    //System.loadLibrary("detection_based_tracker");
+
+                    try {
+                        // load cascade file from application resources
+                        InputStream is = getResources().openRawResource(R.raw.lbpcascade_frontalface);
+                        File cascadeDir = getDir("cascade", Context.MODE_PRIVATE);
+                        mCascadeFile = new File(cascadeDir, "lbpcascade_frontalface.xml");
+                        //File(File parent, String child) 根据 parent 抽象路径名和 child 路径名字符串创建一个新 File 实例。
+                        FileOutputStream os = new FileOutputStream(mCascadeFile);
+                        // FileOutputStream(File file)  创建一个向指定 File 对象表示的文件中写入数据的文件输出流
+
+                        byte[] buffer = new byte[4096];
+                        int bytesRead;
+                        while ((bytesRead = is.read(buffer)) != -1) {
+                            os.write(buffer, 0, bytesRead);
+                        }
+
+                        //inputStream.read() 从输入流中读取数据的下一个字节。返回 0 到 255 范围内的 int 字节值。
+                        // 如果因为已经到达流末尾而没有可用的字节，则返回值 -1。
+                        //write(byte[] b, int off, int len)  将指定 byte 数组中从偏移量 off 开始的 len 个字节写入此文件输出流。
+
+                        is.close();
+                        os.close();
+
+                        mJavaDetector = new CascadeClassifier(mCascadeFile.getAbsolutePath());  //用于在摄像头中检测人
+                        // String getAbsolutePath() 返回此抽象路径名的绝对路径名字符串
+                        if (mJavaDetector.empty()) {
+                            Log.e("cascade", "Failed to load cascade classifier");
+                            mJavaDetector = null;
+                        } else
+                            Log.i("cascade", "Loaded cascade classifier from " + mCascadeFile.getAbsolutePath());
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        Log.e("cascade", "Failed to load cascade. Exception thrown: " + e);
+                    }
+
+                    mOpenCvCameraView.enableView();
+                }
+                break;
+                default:
+                    super.onManagerConnected(status);
+                    break;
+            }
+        }
+    };
+
+    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.toolbar, menu);
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.memu_main, menu);
+        Log.i(TAG, "called onCreateOptionsMenu");
+        mItemSwitchCamera = menu.add("Toggle Front/Back camera");
         return true;
     }
-
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.backup:
-                Toast.makeText(this, "You clicked backup", Toast.LENGTH_SHORT).show();
-                break;
+        String toastMesage = "";
 
-            case R.id.settings:
-                if(SpeechConstant.TYPE_CLOUD.equals(mEngineType)){
-                    Intent intent = new Intent(MainActivity.this, settingActivity.class);
-                    startActivity(intent);
-                }else{
-                    showTip("请前往xfyun.cn下载离线合成体验");
-                }
-                break;
+        if (item == mItemSwitchCamera) {
+            mIsFrontCamera = !mIsFrontCamera;
 
-            case R.id.person_select:
-                 showPresonSelectDialog();
-                break;
+            if (mIsFrontCamera) {
+                mOpenCvCameraView.setCameraIndex(1);
+                toastMesage = "Front Camera";
+            } else {
+                mOpenCvCameraView.setCameraIndex(-1);
+                toastMesage = "Back Camera";
+            }
 
-            default:
+
+            mOpenCvCameraView.enableView();
+            Toast toast = Toast.makeText(this, toastMesage, Toast.LENGTH_LONG);
+            toast.show();
         }
         return true;
     }
 
+    @Override
+    protected void onResume() {
 
-    private void initView() {
-        setContentView(R.layout.activity_main) ;
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toobar);
-        setSupportActionBar(toolbar);
-        et_input = (EditText) findViewById(R.id.et_input );
-        btn_celnlp= (Button) findViewById(R.id.btn_cacelnlp );
-        btn_startspeektext = (Button) findViewById(R.id.btn_startspeektext );
-        btn_startrecognize = (Button) findViewById(R.id.btn_startrecognize );
-        btn_startnlp = (Button) findViewById(R.id.btn_startnlp );
+        super.onResume();
+        if (!OpenCVLoader.initDebug()) {
+            Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_4_0, this, mOpenCVCallBack);
+            //加载OpenCV以供使用  mLoaderCallback 回调函数  用于检查OpenCV是否已经安装好 也可在本地包含函数  否则跳到PLAY STORE去下载
+        } else {
+            Log.d(TAG, "OpenCV library found inside package. Using it!");
+            mOpenCVCallBack.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+        }
+    }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (mOpenCvCameraView != null)
+            mOpenCvCameraView.disableView();
+    }
 
-        btn_celnlp .setOnClickListener(this) ;
-        btn_startspeektext .setOnClickListener(this) ;
-        btn_startrecognize.setOnClickListener(this);
-        btn_startnlp.setOnClickListener(this);
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (mOpenCvCameraView != null)
+            mOpenCvCameraView.disableView();
+    }
+
+    @Override
+    public void onCameraViewStarted(int width, int height) {
+
+        mRgba = new Mat(height,width, CvType.CV_8UC4);
+    }
+
+    @Override
+    public void onCameraViewStopped() {
+        mRgba.release();
 
     }
 
     @Override
-    public void onClick(View view) {
-        switch (view.getId()){
-            case R.id.btn_cacelnlp:// 取消语法理解
-                stopVoiceNlp();
-                break;
-            case R.id.btn_startnlp:// 语法理解
-                startVoiceNlp();
-                break;
+    public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
 
-            case R.id. btn_startspeektext:// 语音合成（把文字转声音）
-                String text = et_input.getText().toString();
-                speekText(text);
-                break;
+        //旋转输入帧
+        Mat mGray = inputFrame.gray();
+        mRgba = inputFrame.rgba();
 
+        if (mIsFrontCamera){
+            Core.flip(mRgba,mRgba,1);
         }
 
-    }
-
-
-    private void createAgent() {
-        if (null == mAIUIAgent) {
-            LogUtil.i(TAG,getString(R.string.createAIUI));
-            mAIUIAgent = AIUIAgent.createAgent(this, getAIUIParams(), mAIUIListener);
+        //Detecting face in the frame  在帧中检测人脸
+        MatOfRect faces = new MatOfRect();
+        if(mJavaDetector!= null)
+        {
+            mJavaDetector.detectMultiScale(mGray, faces, 1.1, 2, 2, new Size(200,200), new Size());
         }
 
-        if (null == mAIUIAgent) {
-            final String strErrorTip = "创建AIUIAgent失败！";
-            LogUtil.e(TAG,strErrorTip);
-            this.et_input.setText(strErrorTip);
-        } else {
-            LogUtil.i(TAG,"AIUIAgent已创建");
+        Rect[] facesArray = faces.toArray();
 
-        }
-    }
 
-    /*
-    * 这段其实是填写上自己的APPID
-    * */
-    private String getAIUIParams() {
-        String params = "";
 
-        AssetManager assetManager = getResources().getAssets();
-        try {
-            InputStream ins = assetManager.open( "cfg/aiui_phone.cfg" );
-            byte[] buffer = new byte[ins.available()];
-            //available() 返回此输入流下一个方法调用可以不受阻塞地从此输入流读取（或跳过）的估计字节数。
+        for (int i = 0; i < facesArray.length; i++)
+        {
 
-            ins.read(buffer);
-            //  read(byte[] b)从输入流中读取一定数量的字节，并将其存储在缓冲区数组 b 中。
-            ins.close();
-            //   close() 关闭此输入流并释放与该流关联的所有系统资源。
+            Imgproc.rectangle(mRgba, facesArray[i].tl(), facesArray[i].br(),new Scalar(0, 255, 0, 255), 3);
+            Log.i(TAG, "有人脸");
+            startActivity(new Intent(MainActivity.this,SpeechActivity.class));
 
-            params = new String(buffer);
-            //String(byte[] bytes)  通过使用平台的默认字符集解码指定的 byte 数组，构造一个新的 String。
-
-            //LogUtil.i(TAG,params);
-            JSONObject paramsJson = new JSONObject(params);  //以params来构建JSONObject
-            paramsJson.getJSONObject("login").put("appid", getString(R.string.app_id));
-
-            params = paramsJson.toString();  //调用toString()方法可直接将其内容显现出来
-            //LogUtil.i(TAG,params);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (JSONException e) {
-            e.printStackTrace();
+            //rect.tl() rect的左上顶点   rect.br() 返回rect的右下顶点
         }
 
-        return params;
-    }
 
-    private AIUIListener mAIUIListener = new AIUIListener() {
-
-        @Override
-        public void onEvent(AIUIEvent event) {
-            LogUtil.i( TAG,  "on event: " + event.eventType );
-
-            switch (event.eventType) {
-                //已连接服务器
-                case AIUIConstant.EVENT_CONNECTED_TO_SERVER:
-                    LogUtil.i(TAG,getString(R.string.connectedServer));
-                    break;
-
-                //已服务器断开
-                case AIUIConstant.EVENT_SERVER_DISCONNECTED:
-                    LogUtil.e(TAG,getString(R.string.disconnectedServer));
-                    break;
-
-                //唤醒事件
-                case AIUIConstant.EVENT_WAKEUP:
-                    LogUtil.i(TAG,getString(R.string.enterEventWakeUp));
-                    break;
-
-                //结果事件
-                case AIUIConstant.EVENT_RESULT: {
-                    LogUtil.i(TAG,getString(R.string.enterResultEvent));
-                    try {
-                        String text = null;
-                        //data字段携带结果数据，info字段为描述数据的JSON字符串
-                        JSONObject bizParamJson = new JSONObject(event.info);
-                        JSONObject data = bizParamJson.getJSONArray("data").getJSONObject(0);
-                        JSONObject params = data.getJSONObject("params");
-                        JSONObject content = data.getJSONArray("content").getJSONObject(0);
-
-                        if (content.has("cnt_id")) {
-                            String cnt_id = content.getString("cnt_id");
-                            String cntStr = new String(event.data.getByteArray(cnt_id), "utf-8");
-                            //String(byte[] bytes, Charset charset) 通过使用指定的 charset 解码指定的 byte 数组，构造一个新的 String。
-                            //public byte[] getByteArray (String key)  功能：获取key对应的byte数组
-
-                            // 获取该路会话的id，将其提供给支持人员，有助于问题排查
-                            // 也可以从Json结果中看到
-                            String sid = event.data.getString("sid");
-
-                            // 获取从数据发送完到获取结果的耗时，单位：ms
-                            // 也可以通过键名"bos_rslt"获取从开始发送数据到获取结果的耗时
-                            long eosRsltTime = event.data.getLong("eos_rslt", -1);//获取key对应的long值  没找到 则返回默认值
-                            //mTimeSpentText.setText(eosRsltTime + "ms");
-
-                            if (TextUtils.isEmpty(cntStr)) {
-                               // ret.append("该会话出错"+sid);
-                                return;
-                            }
-
-                            JSONObject cntJson = new JSONObject(cntStr);
-
-                            if (et_input.getLineCount() > 1000) {
-                                et_input.setText("");
-                            }
-
-                            String sub = params.optString("sub");
-
-                            if ("nlp".equals(sub)) {
-                                // 解析得到语义结果
-                                String resultStr = cntJson.optString("intent");
-                                LogUtil.i( TAG, resultStr );
-                                JSONObject intent1 = cntJson.getJSONObject("intent");
-                                int i = intent1.length();
-
-                                if ( i != 0) {
-                                    String question = intent1.optString("text");
-                                    if (intent1.has("answer")) {
-                                        String answer2 = intent1.optString("answer");
-                                        JSONObject answer = new JSONObject(answer2);
-                                        text = answer.optString("text");
-                                        //只是当无返回值时，getString(String name)抛出错误，optString(String name)返回空值
-                                    } else {
-                                        text = getString(R.string.noanswer);
-                                    }
-                                    et_input.append(question + ":" + text);
-                                }
-
-                                //第四次进入结果事件
-                                //不判断的话  会出现无效文本  20009错误
-                                if (i ==0)
-                                {
-                                    stopVoiceNlp();
-                                    speekText(et_input.getText().toString());
-                                }
-                            }
-                        }
-                    } catch (Throwable e) {
-                        e.printStackTrace();
-                        et_input.append(e.getLocalizedMessage());
-                    }
-
-                } break;
-
-                //错误事件
-                case AIUIConstant.EVENT_ERROR: {
-                    LogUtil.e(TAG,getString(R.string.enterErrorEvent));
-                    et_input.append( "\n" );
-                    et_input.append( "错误: " + event.arg1+"\n" + event.info );
-                    //arg1字段为错误码，info字段为错误描述信息
-                } break;
-
-                //VAD事件   当arg1取值为1时，arg2为音量大小。
-                case AIUIConstant.EVENT_VAD: {
-                    LogUtil.i(TAG,getString(R.string.enterVADevent));
-                    if (AIUIConstant.VAD_BOS == event.arg1) {
-                        LogUtil.i(TAG,getString(R.string.vad_bos));
-                    } else if (AIUIConstant.VAD_EOS == event.arg1) {
-                        LogUtil.i(TAG,getString(R.string.vad_eos));
-                    } else {
-                        LogUtil.i(TAG,"" + event.arg2);//音量大小
-                    }
-                } break;
-
-
-                case AIUIConstant.EVENT_START_RECORD: {
-                    LogUtil.i(TAG,getString(R.string.START_RECORD));
-                    showTip("已开始录音");
-                } break;
-
-                case AIUIConstant.EVENT_STOP_RECORD: {
-                    LogUtil.i(TAG,getString(R.string.STOP_RECORD));
-                    showTip("已停止录音");
-                } break;
-
-                //服务状态事件  当向AIUI发送CMD_GET_STATE命令时抛出该事件
-                case AIUIConstant.EVENT_STATE: {
-                    LogUtil.i(TAG,getString(R.string.enterStateEvent));
-
-                    mAIUIState = event.arg1;
-
-                    if (AIUIConstant.STATE_IDLE == mAIUIState) {
-                        // 闲置状态，AIUI未开启
-                        LogUtil.i(TAG,getString(R.string.STATE_IDLE));
-                        showTip("STATE_IDLE");
-                    } else if (AIUIConstant.STATE_READY == mAIUIState) {
-                        // AIUI已就绪，等待唤醒
-                        LogUtil.i(TAG,getString(R.string.STATE_READY));
-                        showTip("STATE_READY");
-                    } else if (AIUIConstant.STATE_WORKING == mAIUIState) {
-                        // AIUI工作中，可进行交互
-                        LogUtil.i(TAG,getString(R.string.STATE_WORKING));
-                        showTip("STATE_WORKING");
-                    }
-                } break;
-
-                //某条CMD命令对应的返回事件  对于除CMD_GET_STATE外的有返回的命令，都会返回该事件
-                //用arg1标识对应的CMD命令，arg2为返回值
-                case AIUIConstant.EVENT_CMD_RETURN: {
-                    LogUtil.i(TAG,getString(R.string.enterCMD_RETURNTevent));
-
-                } break;
-
-                default:
-                    break;
-            }
-        }
-
-    };
-
-    private void startVoiceNlp(){
-        if (null == mAIUIAgent) {
-            LogUtil.e( TAG, "AIUIAgent为空，请先创建" );
-            showTip("AIUIAgent为空，请先创建");
-            return;
-        }
-
-        LogUtil.i( TAG, "start voice nlp" );
-        et_input.setText("");
-
-        // 先发送唤醒消息，改变AIUI内部状态，只有唤醒状态才能接收语音输入
-        // 默认为oneshot模式，即一次唤醒后就进入休眠。可以修改aiui_phone.cfg中speech参数的interact_mode为continuous以支持持续交互
-        if (AIUIConstant.STATE_WORKING != mAIUIState) {
-            AIUIMessage wakeupMsg = new AIUIMessage(AIUIConstant.CMD_WAKEUP, 0, 0, "", null);
-            mAIUIAgent.sendMessage(wakeupMsg);
-        }
-
-        // 打开AIUI内部录音机，开始录音。若要使用上传的个性化资源增强识别效果，则在参数中添加pers_param设置
-        // 个性化资源使用方法可参见http://doc.xfyun.cn/aiui_mobile/的用户个性化章节
-        String params = "sample_rate=16000,data_type=audio,pers_param={\"uid\":\"\"}";
-        AIUIMessage startRecord = new AIUIMessage(AIUIConstant.CMD_START_RECORD, 0, 0, params, null);
-        mAIUIAgent.sendMessage(startRecord);
-    }
-
-    private void stopVoiceNlp(){
-        if (null == mAIUIAgent) {
-            showTip("AIUIAgent 为空，请先创建");
-            return;
-        }
-        LogUtil.i(TAG,"stop voice nlp");
-        // 停止录音
-        String params = "sample_rate=16000,data_type=audio";
-        AIUIMessage stopRecord = new AIUIMessage(AIUIConstant.CMD_STOP_RECORD, 0, 0, params, null);
-
-        mAIUIAgent.sendMessage(stopRecord);
-    }
-
-    private void speekText(String text) {
-        //1. 创建 SpeechSynthesizer 对象 , 第二个参数： 本地合成时传 InitListener
-        mTts = SpeechSynthesizer.createSynthesizer( this, null);
-        // 云端发音人名称列表
-        mCloudVoicersEntries = getResources().getStringArray(R.array.voicer_cloud_entries);
-        mCloudVoicersValue = getResources().getStringArray(R.array.voicer_cloud_values);
-//2.合成参数设置，详见《 MSC Reference Manual》 SpeechSynthesizer 类
-//设置发音人（更多在线发音人，用户可参见 附录 13.2
-        setParam();
-
-       // mTts.setParameter(SpeechConstant. VOICE_NAME, "vixyun" ); // 设置发音人
-       // mTts.setParameter(SpeechConstant. SPEED, "50" );// 设置语速
-        //mTts.setParameter(SpeechConstant. VOLUME, "80" );// 设置音量，范围 0~100
-        //mTts.setParameter(SpeechConstant. ENGINE_TYPE, SpeechConstant. TYPE_CLOUD); //设置云端
-//设置合成音频保存位置（可自定义保存位置），保存在 “./sdcard/iflytek.pcm”
-//保存在 SD 卡需要在 AndroidManifest.xml 添加写 SD 卡权限
-//仅支持保存为 pcm 和 wav 格式， 如果不需要保存合成音频，注释该行代码
-        //mTts.setParameter(SpeechConstant. TTS_AUDIO_PATH, "./sdcard/iflytek.pcm" );
-//3.开始合成
-        //String text = et_input.getText().toString();
-        int code = mTts.startSpeaking( text, new MySynthesizerListener()) ;
-        if (code != ErrorCode.SUCCESS) {
-            LogUtil.e(TAG,"语音合成失败,错误码: " + code);
-            showTip("语音合成失败,错误码: " + code);
-        }
+        return mRgba;
 
 
     }
-
-    class MySynthesizerListener implements SynthesizerListener {
-
-        @Override
-        public void onSpeakBegin() {
-            showTip(getString(R.string.StartPlay));
-            LogUtil.i(TAG,getString(R.string.StartPlay));
-        }
-
-        @Override
-        public void onSpeakPaused() {
-            //showTip(" 暂停播放 ");
-            LogUtil.i(TAG,getString(R.string.PausePlay));
-        }
-
-        @Override
-        public void onSpeakResumed() {
-            //showTip(" 继续播放 ");
-            LogUtil.i(TAG,getString(R.string.ContinuePlay));
-        }
-
-        @Override
-        public void onBufferProgress(int percent, int beginPos, int endPos ,
-                                     String info) {
-            // 合成进度
-        }
-
-        @Override
-        public void onSpeakProgress(int percent, int beginPos, int endPos) {
-            // 播放进度
-        }
-
-        @Override
-        public void onCompleted(SpeechError error) {
-            if (error == null) {
-                showTip(getString(R.string.PlayCompleted));
-                LogUtil.i(TAG,getString(R.string.PlayCompleted));
-                //mTts.stopSpeaking();
-                startVoiceNlp();
-
-            } else if (error != null ) {
-                showTip(error.getPlainDescription( true));
-            }
-        }
-
-        @Override
-        public void onEvent(int eventType, int arg1 , int arg2, Bundle obj) {
-            // 以下代码用于获取与云端的会话 id，当业务出错时将会话 id提供给技术支持人员，可用于查询会话日志，定位出错原因
-            // 若使用本地能力，会话 id为null
-            //if (SpeechEvent.EVENT_SESSION_ID == eventType) {
-            //     String sid = obj.getString(SpeechEvent.KEY_EVENT_SESSION_ID);
-            //     Log.d(TAG, "session id =" + sid);
-            //}
-        }
-    }
-
-
-    /**
-     * 参数设置
-     * @return
-     */
-    private void setParam(){
-        // 清空参数
-        mTts.setParameter(SpeechConstant.PARAMS, null);
-        // 根据合成引擎设置相应参数
-        if(mEngineType.equals(SpeechConstant.TYPE_CLOUD)) {
-            mTts.setParameter(SpeechConstant.ENGINE_TYPE, SpeechConstant.TYPE_CLOUD);
-            // 设置在线合成发音人
-            mTts.setParameter(SpeechConstant.VOICE_NAME,voicer);
-            //设置合成语速
-            String yusu = mSharedPreferences.getString("speed_preference", "50");
-            LogUtil.e("yusu",yusu);
-            mTts.setParameter(SpeechConstant.SPEED,yusu );
-
-            //mTts.setParameter(SpeechConstant.SPEED, mSharedPreferences.getString("speed_preference", "50"));
-            //设置合成音调
-            mTts.setParameter(SpeechConstant.PITCH, mSharedPreferences.getString("pitch_preference", "50"));
-            //设置合成音量
-            mTts.setParameter(SpeechConstant.VOLUME, mSharedPreferences.getString("volume_preference", "50"));
-        }
-
-
-        //设置播放器音频流类型
-        mTts.setParameter(SpeechConstant.STREAM_TYPE, mSharedPreferences.getString("stream_preference", "3"));
-        // 设置播放合成音频打断音乐播放，默认为true
-        mTts.setParameter(SpeechConstant.KEY_REQUEST_FOCUS, "true");
-
-        // 设置音频保存路径，保存音频格式支持pcm、wav，设置路径为sd卡请注意WRITE_EXTERNAL_STORAGE权限
-        // 注：AUDIO_FORMAT参数语记需要更新版本才能生效
-        mTts.setParameter(SpeechConstant.AUDIO_FORMAT, "wav");
-        mTts.setParameter(SpeechConstant.TTS_AUDIO_PATH, Environment.getExternalStorageDirectory()+"/msc/tts.wav");
-    }
-
-    private int selectedNum = 0;
-    /**
-     * 发音人选择。
-     */
-    private void showPresonSelectDialog() {
-
-            // 在线合成发音人选择
-                new AlertDialog.Builder(this).setTitle("在线合成发音人选项")
-                        .setSingleChoiceItems(mCloudVoicersEntries, // 单选框有几项,各是什么名字
-                                selectedNum, // 默认的选项
-                                new DialogInterface.OnClickListener() { // 点击单选框后的处理
-                                    public void onClick(DialogInterface dialog,
-                                                        int which) { // 点击了哪一项
-                                        voicer = mCloudVoicersValue[which];
-                                        selectedNum = which;
-                                        dialog.dismiss();
-                                    }
-                                }).show();
-
-    }
-
-
-
-
-    private void showTip(final String str) {
-        mToast.setText(str);
-        mToast.show();
-    }
-
-
 }

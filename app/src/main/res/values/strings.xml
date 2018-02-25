@@ -26,5 +26,7 @@
     <string name="ContinuePlay">继续播放</string>
     <string name="PlayCompleted">播放完成</string>
 
+    <string name="action_settings">Settings</string>
+
 
 </resources>
