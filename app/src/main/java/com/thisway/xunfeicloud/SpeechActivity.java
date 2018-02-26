@@ -10,6 +10,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -24,8 +25,13 @@ import com.iflytek.aiui.AIUIListener;
 import com.iflytek.aiui.AIUIMessage;
 
 import com.iflytek.cloud.ErrorCode;
+import com.iflytek.cloud.GrammarListener;
+import com.iflytek.cloud.InitListener;
+import com.iflytek.cloud.RecognizerListener;
+import com.iflytek.cloud.RecognizerResult;
 import com.iflytek.cloud.SpeechConstant;
 import com.iflytek.cloud.SpeechError;
+import com.iflytek.cloud.SpeechRecognizer;
 import com.iflytek.cloud.SpeechSynthesizer;
 import com.iflytek.cloud.SynthesizerListener;
 
@@ -40,6 +46,10 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     private static final String TAG = SpeechActivity.class.getSimpleName();
     private Toast mToast;
     private SharedPreferences mSharedPreferences;
+    private SpeechRecognizer mAsr;
+
+    private static final String KEY_GRAMMAR_ABNF_ID = "grammar_abnf_id";
+    private static final String GRAMMAR_TYPE_ABNF = "abnf";
 
     private EditText et_input;
     private Button btn_celnlp, btn_startspeektext,btn_startrecognize,btn_startnlp ;
@@ -134,10 +144,153 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 speekText(text);
                 break;
 
+            case R.id.btn_startrecognize://语法识别（完成语音命令的识别）
+                asrtest();
+                break;
+
+
         }
 
     }
 
+    //语法识别
+    private void asrtest() {
+// 云端语法文件
+        String mCloudGrammar = "#ABNF 1.0 UTF-8;\n" +
+                "                         language zh-CN;\n" +
+                "                          mode voice;\n" +
+                "        root $main;\n" +
+                "        $main =[我] [想] [$go] ( $opera1 | $location) ;\n" +
+                "        $go = 去 | 要 | 到 | 向 ;\n" +
+                "        $opera1 = 左转 | 右转 | 前进 | 后退 | 开灯 | 关灯 | 打电话 | 发短信 | 点外卖;\n" +
+                "        $location = 图书馆 | 群英楼 | 中心楼 | 中山院 | 沙糖园 | 香园 | 东南大学;";
+
+        // 语法、词典临时变量
+        String mContent;
+        // 函数调用返回值
+        int ret = 0;
+
+        mEngineType = SpeechConstant.TYPE_CLOUD;
+
+        // 初始化识别对象
+        mAsr = SpeechRecognizer.createRecognizer(SpeechActivity.this, mInitListener);
+        //mCloudGrammar = FucUtil.readFile(this,"grammar_sample.abnf","utf-8");
+
+        mSharedPreferences = getSharedPreferences(getPackageName(),	MODE_PRIVATE);
+
+        // mContent = new String(mCloudGrammar);
+
+        mAsr.setParameter(SpeechConstant.TEXT_ENCODING,"utf-8");
+        ret = mAsr.buildGrammar(GRAMMAR_TYPE_ABNF, mCloudGrammar, mCloudGrammarListener);
+        if(ret != ErrorCode.SUCCESS)
+            showTip("语法构建失败,错误码：" + ret);
+
+
+        //指定引擎类型
+        mAsr.setParameter(SpeechConstant.ENGINE_TYPE, mEngineType);
+        String grammarId = mSharedPreferences.getString(KEY_GRAMMAR_ABNF_ID, null);
+        mAsr.setParameter(SpeechConstant.CLOUD_GRAMMAR, grammarId);
+        ret = mAsr.startListening(mRecognizerListener);
+        if (ret != ErrorCode.SUCCESS) {
+            showTip("识别失败,错误码: " + ret);
+        }
+
+        return;
+
+    }
+
+    /**
+     * 云端构建语法监听器。
+     */
+    private GrammarListener mCloudGrammarListener = new GrammarListener() {
+        @Override
+        public void onBuildFinish(String grammarId, SpeechError error) {
+            if(error == null){
+                String grammarID = new String(grammarId);
+                SharedPreferences.Editor editor = mSharedPreferences.edit();
+                if(!TextUtils.isEmpty(grammarId))
+                    editor.putString(KEY_GRAMMAR_ABNF_ID, grammarID);
+                editor.commit();
+                showTip("语法构建成功：" + grammarId);
+            }else{
+                showTip("语法构建失败,错误码：" + error.getErrorCode());
+            }
+        }
+    };
+
+    /**
+     * 初始化监听器。
+     */
+    private InitListener mInitListener = new InitListener() {
+
+        @Override
+        public void onInit(int code) {
+            Log.d(TAG, "SpeechRecognizer init() code = " + code);
+            if (code != ErrorCode.SUCCESS) {
+                showTip("初始化失败,错误码："+code);
+            }
+        }
+    };
+
+
+    /**
+     * 识别监听器。
+     */
+    private RecognizerListener mRecognizerListener = new RecognizerListener() {
+
+        @Override
+        public void onVolumeChanged(int volume, byte[] data) {
+            showTip("当前正在说话，音量大小：" + volume);
+            Log.d(TAG, "返回音频数据："+data.length);
+        }
+
+        @Override
+        public void onResult(final RecognizerResult result, boolean isLast) {
+            if (null != result) {
+                Log.d(TAG, "recognizer result：" + result.getResultString());
+                String text ;
+                if("cloud".equalsIgnoreCase(mEngineType)){
+                    text = JsonParser.parseGrammarResult(result.getResultString());
+                }else {
+                    text = JsonParser.parseLocalGrammarResult(result.getResultString());
+                }
+
+                // 显示
+                et_input.setText(text);
+                //((EditText)findViewById(R.id.isr_text)).setText(text);
+            } else {
+                Log.d(TAG, "recognizer result : null");
+            }
+        }
+
+        @Override
+        public void onEndOfSpeech() {
+            // 此回调表示：检测到了语音的尾端点，已经进入识别过程，不再接受语音输入
+            showTip("结束说话");
+        }
+
+        @Override
+        public void onBeginOfSpeech() {
+            // 此回调表示：sdk内部录音机已经准备好了，用户可以开始语音输入
+            showTip("开始说话");
+        }
+
+        @Override
+        public void onError(SpeechError error) {
+            showTip("onError Code："	+ error.getErrorCode());
+        }
+
+        @Override
+        public void onEvent(int eventType, int arg1, int arg2, Bundle obj) {
+            // 以下代码用于获取与云端的会话id，当业务出错时将会话id提供给技术支持人员，可用于查询会话日志，定位出错原因
+            // 若使用本地能力，会话id为null
+            //	if (SpeechEvent.EVENT_SESSION_ID == eventType) {
+            //		String sid = obj.getString(SpeechEvent.KEY_EVENT_SESSION_ID);
+            //		Log.d(TAG, "session id =" + sid);
+            //	}
+        }
+
+    };
 
     private void createAgent() {
         if (null == mAIUIAgent) {
