@@ -42,10 +42,12 @@ public class JsonParser {
     public static String parseGrammarResult(String json) {
         StringBuffer ret = new StringBuffer() ;
         try {
+
             JSONTokener tokener = new JSONTokener(json) ;
-            JSONObject joResult = new JSONObject(tokener) ;
+            JSONObject joResult = new JSONObject(tokener) ;//这俩句是将字符串json转换为JSONObject对象joResult
 
             JSONArray words = joResult.getJSONArray("ws" );
+
             for (int i = 0; i < words.length(); i++) {
                 JSONArray items = words.getJSONObject(i).getJSONArray("cw" );
                 for (int j = 0; j < items.length() ; j++)
@@ -60,6 +62,37 @@ public class JsonParser {
                     ret.append("【置信度】 " + obj.getInt("sc" ));
                     ret.append("\n ");
                 }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            ret.append(" 没有匹配结果 .");
+        }
+        return ret.toString();
+    }
+
+    public static String myParseGrammarResult(String json) {
+        StringBuffer ret = new StringBuffer() ;
+        try {
+
+            JSONTokener tokener = new JSONTokener(json) ;
+            JSONObject joResult = new JSONObject(tokener) ;//这俩句是将字符串json转换为JSONObject对象joResult
+
+            JSONArray words = joResult.getJSONArray("ws" );
+
+           for (int i = 0; i < words.length(); i++) {
+                JSONArray items = words.getJSONObject(i).getJSONArray("cw" );
+                //for (int j = 0; j < items.length() ; j++)
+                //{
+                    JSONObject obj = items.getJSONObject(0);
+                    if (obj.getString("w").contains( "nomatch"))
+                    {
+                        ret.append( "没有匹配结果.") ;
+                        return ret.toString();
+                    }
+                    ret.append(obj.getString("w" ));
+                    //ret.append("【置信度】 " + obj.getInt("sc" ));
+                   // ret.append("\n ");
+                //}
             }
         } catch (Exception e) {
             e.printStackTrace();

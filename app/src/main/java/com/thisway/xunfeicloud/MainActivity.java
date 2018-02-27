@@ -52,7 +52,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.java_surface_view);
         mOpenCvCameraView.setVisibility(CameraBridgeViewBase.VISIBLE);
         mOpenCvCameraView.setCvCameraViewListener(this);
-       // mOpenCvCameraView.setCameraIndex(1);//为了使用前置摄像头  要不然一直是后置摄像头
+        //mOpenCvCameraView.setCameraIndex(1);//为了使用前置摄像头  要不然一直是后置摄像头
     }
 
 

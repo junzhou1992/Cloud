@@ -68,6 +68,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        LogUtil.e(TAG,"onCreate");
         mSharedPreferences = getSharedPreferences(settingFragment.PREFER_NAME, MODE_PRIVATE);
         mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
         initView() ;
@@ -145,6 +146,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 break;
 
             case R.id.btn_startrecognize://语法识别（完成语音命令的识别）
+                stopVoiceNlp();
                 asrtest();
                 break;
 
@@ -246,18 +248,26 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
         @Override
         public void onResult(final RecognizerResult result, boolean isLast) {
+            LogUtil.d("语法识别","onResult");
             if (null != result) {
                 Log.d(TAG, "recognizer result：" + result.getResultString());
+                // 有匹配结果时recognizer result：{"sn":1,"ls":true,"bg":0,"ed":0,"ws":[{"bg":0,"cw":[{"sc":"58","gm":"0","w":"去中心楼"},{"sc":"54","gm":"0","w":"中心楼"},{"sc":"51","gm":"0","w":"我去中心楼"}]}]}
+                //没有匹配结果时 recognizer result：{"sn":1,"ls":true,"bg":0,"ed":0,"ws":[{"bg":0,"cw":[{"sc":"91","gm":"0","w":"nomatch:out-of-voca","mn":[{"id":"nomatch","name":"nomatch:out-of-voca"}]}]}]}
+
                 String text ;
                 if("cloud".equalsIgnoreCase(mEngineType)){
-                    text = JsonParser.parseGrammarResult(result.getResultString());
+                    //text = JsonParser.parseGrammarResult(result.getResultString());
+                    text = JsonParser.myParseGrammarResult(result.getResultString());
                 }else {
                     text = JsonParser.parseLocalGrammarResult(result.getResultString());
                 }
 
                 // 显示
                 et_input.setText(text);
-                //((EditText)findViewById(R.id.isr_text)).setText(text);
+
+                //text = JsonParser.myParseGrammarResult(result.getResultString());
+                asrResultProcess.resultProcess(text);
+
             } else {
                 Log.d(TAG, "recognizer result : null");
             }
@@ -266,17 +276,20 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         @Override
         public void onEndOfSpeech() {
             // 此回调表示：检测到了语音的尾端点，已经进入识别过程，不再接受语音输入
+            LogUtil.d("语法识别","结束说话");
             showTip("结束说话");
         }
 
         @Override
         public void onBeginOfSpeech() {
             // 此回调表示：sdk内部录音机已经准备好了，用户可以开始语音输入
+            LogUtil.d("语法识别","开始说话");
             showTip("开始说话");
         }
 
         @Override
         public void onError(SpeechError error) {
+            LogUtil.d("语法识别","onError Code："	+ error.getErrorCode());
             showTip("onError Code："	+ error.getErrorCode());
         }
 
@@ -480,15 +493,16 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                     if (AIUIConstant.STATE_IDLE == mAIUIState) {
                         // 闲置状态，AIUI未开启
                         LogUtil.i(TAG,getString(R.string.STATE_IDLE));
-                        showTip("STATE_IDLE");
+                        //showTip("STATE_IDLE");
                     } else if (AIUIConstant.STATE_READY == mAIUIState) {
                         // AIUI已就绪，等待唤醒
                         LogUtil.i(TAG,getString(R.string.STATE_READY));
-                        showTip("STATE_READY");
+                        //startActivity(new Intent(SpeechActivity.this,MainActivity.class));  错误进入工作状态前必须要先进入就绪状态
+                        //showTip("STATE_READY");
                     } else if (AIUIConstant.STATE_WORKING == mAIUIState) {
                         // AIUI工作中，可进行交互
                         LogUtil.i(TAG,getString(R.string.STATE_WORKING));
-                        showTip("STATE_WORKING");
+                       // showTip("STATE_WORKING");
                     }
                 } break;
 
@@ -608,7 +622,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
             if (error == null) {
                 showTip(getString(R.string.PlayCompleted));
                 LogUtil.i(TAG,getString(R.string.PlayCompleted));
-                //mTts.stopSpeaking();
+                mTts.stopSpeaking();
                 startVoiceNlp();
 
             } else if (error != null ) {
@@ -686,11 +700,43 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     }
 
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        LogUtil.i(TAG,"onPause");
 
+        if( null != mAIUIAgent ){
+            LogUtil.i(TAG,"mAIUIAgentDesrtroy");
+            mAIUIAgent.destroy();
+            mAIUIAgent = null;
+        }
+
+        if( null != mTts ){
+            LogUtil.i(TAG,"mTtsDestory");
+            mTts.stopSpeaking();
+            // 暂停时释放合成连接
+            mTts.destroy();
+        }
+
+        if( null != mAsr ){
+            // 暂停时释放asr连接
+            mAsr.cancel();//取消识别
+            mAsr.destroy();
+        }
+
+
+    }
 
     private void showTip(final String str) {
-        mToast.setText(str);
-        mToast.show();
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mToast.setText(str);
+                mToast.show();
+            }
+        });
+
     }
 
 
