@@ -54,6 +54,42 @@
     </string-array>
 
 
+    <string-array name="HBRStructions">
+        <item>1询问电梯方位</item>
+        <item>2询问楼梯方位</item>
+        <item>3询问餐厅地点</item>
+        <item>4询问会议室地点</item>
+        <item>5询问健身房地点</item>
+        <item>6询问中餐厅地点</item>
+        <item>7询问西餐厅地点</item>
+        <item>8询问娱乐中心地点</item>
+        <item>9询问失物招领处地点</item>
+        <item>10询问行李寄存处地点</item>
+        <item>11询问附近银行地点</item>
+        <item>12询问附近商场地点</item>
+        <item>13询问附近咖啡馆地点</item>
+        <item>14需要点餐</item>
+        <item>15需要洗衣</item>
+        <item>16询问附近地铁地点</item>
+        <item>17需要寄存行李地点</item>
+        <item>18退房时间</item>
+        <item>19入住时间</item>
+        <item>20酒店房型</item>
+        <item>21酒店押金</item>
+        <item>22附近机场的地点</item>
+        <item>23酒店里的商店位置</item>
+        <item>24换房间</item>
+        <item>25延长住店</item>
+        <item>26换币服务</item>
+        <item>27订票服务</item>
+        <item>28叫醒服务</item>
+        <item>29付款方式</item>
+        <item>30房费咨询</item>
+
+
+    </string-array>
+
+
 
 
 </resources>

@@ -6,6 +6,9 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
@@ -34,6 +37,7 @@ import com.iflytek.cloud.SpeechError;
 import com.iflytek.cloud.SpeechRecognizer;
 import com.iflytek.cloud.SpeechSynthesizer;
 import com.iflytek.cloud.SynthesizerListener;
+import com.thisway.hardlibrary.hbr740_control;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -52,7 +56,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     private static final String GRAMMAR_TYPE_ABNF = "abnf";
 
     private EditText et_input;
-    private Button btn_celnlp, btn_startspeektext,btn_startrecognize,btn_startnlp ;
+    private Button btn_celnlp, btn_startspeektext,btn_startrecognize,btn_startHBRAsr,btn_startnlp ;
 
     private String mEngineType = SpeechConstant.TYPE_CLOUD;
     private AIUIAgent mAIUIAgent = null;
@@ -63,8 +67,47 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
     private String[] mCloudVoicersEntries;
     private String[] mCloudVoicersValue ;
+    private String[] mStructions;
 
+    private static final int  OPEN_HBR740_ERROR= 1;
+    private static final int  OPEN_HBR740_right= 2;
+    private static final int  HBR740_Asr_NO_ANSWER= 3;
+    private static final int  HBR740_Asr_ANSWER= 4;
+    private Handler messageHandler;
+    int ret = -1;
     //praviate int state = 0;
+
+    private class MessageHandler extends Handler {
+        public MessageHandler(Looper looper) {
+            super(looper);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what){
+                case OPEN_HBR740_ERROR:
+                    et_input.setText("open_hbr740_ERROR");
+                    break;
+                case OPEN_HBR740_right:
+                    et_input.setText("open_hbr740_right");
+                    break;
+                case HBR740_Asr_NO_ANSWER:
+                    et_input.setText("HBR740_Asr_NO_ANSWER");
+                    break;
+                case HBR740_Asr_ANSWER:
+                    et_input.setText("HBR740_Asr_ANSWER:" + msg.arg1);
+
+                    break;
+                default:
+                    break;
+
+
+            }
+
+        }
+    }
+
+
 
 
     @Override
@@ -76,7 +119,10 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
         initView() ;
         createAgent();
+        Looper looper = Looper.myLooper();
+        messageHandler = new MessageHandler(looper);
         speekText("您好,请问您有什么问题");
+        startOpenHbr740Thread();
 
     }
 
@@ -123,6 +169,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         btn_celnlp= (Button) findViewById(R.id.btn_cacelnlp );
         btn_startspeektext = (Button) findViewById(R.id.btn_startspeektext );
         btn_startrecognize = (Button) findViewById(R.id.btn_startrecognize );
+        btn_startHBRAsr = (Button) findViewById(R.id.btn_startHBRAsr);
         btn_startnlp = (Button) findViewById(R.id.btn_startnlp );
 
 
@@ -130,6 +177,8 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         btn_startspeektext .setOnClickListener(this) ;
         btn_startrecognize.setOnClickListener(this);
         btn_startnlp.setOnClickListener(this);
+        btn_startHBRAsr.setOnClickListener(this);
+
 
     }
 
@@ -152,12 +201,90 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 //stopVoiceNlp();
                 asrtest();
                 break;
+            case R.id.btn_startHBRAsr://HBR语音识别（完成语音命令的识别）
+                LogUtil.i (TAG, "onClick: hbr740");
+                startHbr740AsrThread();
+
+
+                break;
 
 
         }
 
     }
+    /******************************本地HBR*************************************/
 
+    private void startHbr740AsrThread() {
+        et_input.setText("hrb_asr ing");
+        new Thread() {
+            @Override
+            public void run() {
+                int asRresult = hbr740_control.hbr_asr();
+                String outline_Result = "HBR_Result : NO RESULT";
+                Log.i(TAG, " "+ asRresult);
+                outline_Result = "HBR_Result : NO RESULT" + HBRResult(asRresult);
+                LogUtil.i("HBRResult", outline_Result);
+
+                if (asRresult == 256) {
+                    Message message = Message.obtain();
+                    message.what =HBR740_Asr_NO_ANSWER;
+                    messageHandler.sendMessage(message);
+                } else {
+                    Message message = Message.obtain();
+                    message.what =  HBR740_Asr_ANSWER;
+                    message.arg1= asRresult;
+                    messageHandler.sendMessage(message);
+                }
+            }
+
+        }.start();
+    }
+
+    public  String HBRResult(int result){
+
+
+        String HBR740_Result = "HBR740_Result: ";
+
+
+
+        mStructions = getResources().getStringArray(R.array.HBRStructions);
+
+        //HBR740_Result = "HBR740_Result: "+  mStructions[20];  出来的是第21
+
+        LogUtil.i("HBRResult", HBR740_Result);
+
+        return HBR740_Result;
+    }
+
+
+
+    private void  startOpenHbr740Thread() {
+        new Thread() {
+            @Override
+            public void run() {
+
+                ret = hbr740_control.open_hbr();
+                if (ret < 0) {
+                    Log.e(TAG, "can not open hbr740");
+
+                    Message message = Message.obtain();
+                    message.what = OPEN_HBR740_ERROR;
+                    messageHandler.sendMessage(message);
+
+                } else {
+
+                    Message message = Message.obtain();
+                    message.what = OPEN_HBR740_right;
+                    messageHandler.sendMessage(message);
+                }
+            }
+        }.start();
+    }
+
+
+
+
+/**********************云语法识别*************************/
     //语法识别
     private void asrtest() {
 // 云端语法文件

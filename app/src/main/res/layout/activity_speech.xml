@@ -43,6 +43,12 @@
         android:id="@+id/btn_startrecognize"
         android:text="语法识别"/>
 
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/btn_startHBRAsr"
+        android:text="HBR本地语音识别"/>
+
 
     <Button
         android:layout_width="match_parent"
