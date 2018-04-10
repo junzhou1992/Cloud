@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">xunfeiCloud</string>
+    <string name="app_name">语音交互</string>
     <string name="mainActivity_name">语音交互</string>
     <!-- 请替换成在语音云官网申请的appid -->
     <string name="app_id">58c65dd3</string>

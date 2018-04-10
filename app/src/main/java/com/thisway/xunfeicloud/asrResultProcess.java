@@ -33,6 +33,7 @@ public class asrResultProcess {
         switch (c) {
             case "前进":
                 LogUtil.i(TAG, "发送前进的数据");
+
                 break;
 
             case "后退":
@@ -98,7 +99,7 @@ public class asrResultProcess {
                 break;
 
             default:
-                LogUtil.i(TAG, "无法匹配命令词，请重新发送命令");
+                LogUtil.i(TAG, "没有匹配结果，请重新发送命令或者说语义理解将进入语义理解");
                 break;
 
 

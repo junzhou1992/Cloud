@@ -211,7 +211,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         {
 
             Imgproc.rectangle(mRgba, facesArray[i].tl(), facesArray[i].br(),new Scalar(0, 255, 0, 255), 3);
-            Log.i(TAG, "有人脸");
+            LogUtil.i(TAG, "有人脸");
             startActivity(new Intent(MainActivity.this,SpeechActivity.class));
 
             //rect.tl() rect的左上顶点   rect.br() 返回rect的右下顶点

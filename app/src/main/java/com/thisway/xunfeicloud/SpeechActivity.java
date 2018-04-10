@@ -45,7 +45,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
     private static final String TAG = SpeechActivity.class.getSimpleName();
     private Toast mToast;
-    private SharedPreferences mSharedPreferences;
+    private SharedPreferences mSharedPreferences,mSharedPreferences_asr ;
     private SpeechRecognizer mAsr;
 
     private static final String KEY_GRAMMAR_ABNF_ID = "grammar_abnf_id";
@@ -64,12 +64,15 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     private String[] mCloudVoicersEntries;
     private String[] mCloudVoicersValue ;
 
+    //praviate int state = 0;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         LogUtil.e(TAG,"onCreate");
         mSharedPreferences = getSharedPreferences(settingFragment.PREFER_NAME, MODE_PRIVATE);
+
         mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
         initView() ;
         createAgent();
@@ -133,10 +136,10 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     @Override
     public void onClick(View view) {
         switch (view.getId()){
-            case R.id.btn_cacelnlp:// 取消语法理解
+            case R.id.btn_cacelnlp:// 取消语义理解
                 stopVoiceNlp();
                 break;
-            case R.id.btn_startnlp:// 语法理解
+            case R.id.btn_startnlp:// 语义理解
                 startVoiceNlp();
                 break;
 
@@ -146,7 +149,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 break;
 
             case R.id.btn_startrecognize://语法识别（完成语音命令的识别）
-                stopVoiceNlp();
+                //stopVoiceNlp();
                 asrtest();
                 break;
 
@@ -162,10 +165,15 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 "                         language zh-CN;\n" +
                 "                          mode voice;\n" +
                 "        root $main;\n" +
-                "        $main =[我] [想] [$go] ( $opera1 | $location) ;\n" +
-                "        $go = 去 | 要 | 到 | 向 ;\n" +
-                "        $opera1 = 左转 | 右转 | 前进 | 后退 | 开灯 | 关灯 | 打电话 | 发短信 | 点外卖;\n" +
-                "        $location = 图书馆 | 群英楼 | 中心楼 | 中山院 | 沙糖园 | 香园 | 东南大学;";
+                "        $main =[我] [$want]  [$ask] [$Irrelevent1] [$go] ( $opera | $location | $content) [$Irrelevent2] ;\n" +
+                "        $want = 想 | 需要 | 可以;\n" +
+                "        $ask = 知道 | 请问 | 问 | 了解;\n" +
+                "        $Irrelevent1 = 怎么 | 在哪里 |  有哪些 |几点 ;\n"+
+                "        $go = 去 | 要 | 到 | 向 | 走;\n" +
+                "        $opera = 点餐服务 | 洗衣服务  | 点餐 | 洗衣 | 用餐 | 退房 | 入住;\n" +
+                "        $content = 入住时间 | 退房时间 | 酒店押金 | 酒店房型 | 入住 | 退房 | 用餐时间  | 洗衣时间 | 点餐时间;\n" +
+                "        $location = 电梯 |楼梯 | 餐厅 | 中餐厅 | 西餐厅 |  健身房 | 会议室 | 失物招领处 | 行李寄存处 | 附近银行 | 附近商场 | 附近机场 | 咖啡馆;\n" +
+                "        $Irrelevent2 = 怎么走 | 在哪里 | 那里 | 有哪些 |是几点 | 是多少;  ";
 
         // 语法、词典临时变量
         String mContent;
@@ -178,7 +186,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         mAsr = SpeechRecognizer.createRecognizer(SpeechActivity.this, mInitListener);
         //mCloudGrammar = FucUtil.readFile(this,"grammar_sample.abnf","utf-8");
 
-        mSharedPreferences = getSharedPreferences(getPackageName(),	MODE_PRIVATE);
+        mSharedPreferences_asr = getSharedPreferences(getPackageName(),	MODE_PRIVATE);
 
         // mContent = new String(mCloudGrammar);
 
@@ -190,7 +198,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
         //指定引擎类型
         mAsr.setParameter(SpeechConstant.ENGINE_TYPE, mEngineType);
-        String grammarId = mSharedPreferences.getString(KEY_GRAMMAR_ABNF_ID, null);
+        String grammarId = mSharedPreferences_asr.getString(KEY_GRAMMAR_ABNF_ID, null);
         mAsr.setParameter(SpeechConstant.CLOUD_GRAMMAR, grammarId);
         ret = mAsr.startListening(mRecognizerListener);
         if (ret != ErrorCode.SUCCESS) {
@@ -209,7 +217,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         public void onBuildFinish(String grammarId, SpeechError error) {
             if(error == null){
                 String grammarID = new String(grammarId);
-                SharedPreferences.Editor editor = mSharedPreferences.edit();
+                SharedPreferences.Editor editor =  mSharedPreferences_asr.edit();
                 if(!TextUtils.isEmpty(grammarId))
                     editor.putString(KEY_GRAMMAR_ABNF_ID, grammarID);
                 editor.commit();
@@ -250,7 +258,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         public void onResult(final RecognizerResult result, boolean isLast) {
             LogUtil.d("语法识别","onResult");
             if (null != result) {
-                Log.d(TAG, "recognizer result：" + result.getResultString());
+                LogUtil.i(TAG, "recognizer result：" + result.getResultString());
                 // 有匹配结果时recognizer result：{"sn":1,"ls":true,"bg":0,"ed":0,"ws":[{"bg":0,"cw":[{"sc":"58","gm":"0","w":"去中心楼"},{"sc":"54","gm":"0","w":"中心楼"},{"sc":"51","gm":"0","w":"我去中心楼"}]}]}
                 //没有匹配结果时 recognizer result：{"sn":1,"ls":true,"bg":0,"ed":0,"ws":[{"bg":0,"cw":[{"sc":"91","gm":"0","w":"nomatch:out-of-voca","mn":[{"id":"nomatch","name":"nomatch:out-of-voca"}]}]}]}
 
@@ -258,15 +266,29 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 if("cloud".equalsIgnoreCase(mEngineType)){
                     //text = JsonParser.parseGrammarResult(result.getResultString());
                     text = JsonParser.myParseGrammarResult(result.getResultString());
+                    LogUtil.i(TAG, "recognizer result：" + text);
                 }else {
                     text = JsonParser.parseLocalGrammarResult(result.getResultString());
                 }
 
                 // 显示
                 et_input.setText(text);
+                //if(text.equals("没有匹配结果."))
+                //{
+                    //mAsr.stopListening();
+                   //showTip("停止识别");
+                   // mAsr.cancel();
+                    // showTip("取消识别");
+                   // startVoiceNlp();  //没有匹配结果时就开始语义理解
+               // } else{
+                    //text = JsonParser.myParseGrammarResult(result.getResultString());
+                    asrResultProcess.resultProcess(text);
+               // }
 
-                //text = JsonParser.myParseGrammarResult(result.getResultString());
-                asrResultProcess.resultProcess(text);
+
+
+
+
 
             } else {
                 Log.d(TAG, "recognizer result : null");
@@ -346,7 +368,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
             paramsJson.getJSONObject("login").put("appid", getString(R.string.app_id));
 
             params = paramsJson.toString();  //调用toString()方法可直接将其内容显现出来
-            //LogUtil.i(TAG,params);
+            LogUtil.i(TAG,params);
         } catch (IOException e) {
             e.printStackTrace();
         } catch (JSONException e) {
@@ -385,6 +407,10 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                         String text = null;
                         //data字段携带结果数据，info字段为描述数据的JSON字符串
                         JSONObject bizParamJson = new JSONObject(event.info);
+                        //String info =  bizParamJson.toString();
+                       // LogUtil.e( TAG, "info:"+ info );
+
+
                         JSONObject data = bizParamJson.getJSONArray("data").getJSONObject(0);
                         JSONObject params = data.getJSONObject("params");
                         JSONObject content = data.getJSONArray("content").getJSONObject(0);
@@ -392,12 +418,18 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                         if (content.has("cnt_id")) {
                             String cnt_id = content.getString("cnt_id");
                             String cntStr = new String(event.data.getByteArray(cnt_id), "utf-8");
+
+                            //cntstr为结果的数据  通过cnt_id来取
+
+                           // LogUtil.e( TAG, "cntStr:"+ cntStr );
+
                             //String(byte[] bytes, Charset charset) 通过使用指定的 charset 解码指定的 byte 数组，构造一个新的 String。
                             //public byte[] getByteArray (String key)  功能：获取key对应的byte数组
 
                             // 获取该路会话的id，将其提供给支持人员，有助于问题排查
                             // 也可以从Json结果中看到
                             String sid = event.data.getString("sid");
+
 
                             // 获取从数据发送完到获取结果的耗时，单位：ms
                             // 也可以通过键名"bos_rslt"获取从开始发送数据到获取结果的耗时
@@ -431,6 +463,13 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                                         JSONObject answer = new JSONObject(answer2);
                                         text = answer.optString("text");
                                         //只是当无返回值时，getString(String name)抛出错误，optString(String name)返回空值
+
+                                        // if(text.equals("语法识别"))
+                                            //stopVoiceNlp();
+                                            // asrtest();
+                                        //自定义问答中定义了语法识别  如果是客户说了语法识别 就进入语法识别中
+
+
                                     } else {
                                         text = getString(R.string.noanswer);
                                     }
@@ -442,7 +481,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                                 if (i ==0)
                                 {
                                     stopVoiceNlp();
-                                    speekText(et_input.getText().toString());
+                                    speekText(et_input.getText().toString());  //开始语音合成
                                 }
                             }
                         }
@@ -474,6 +513,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 } break;
 
 
+
                 case AIUIConstant.EVENT_START_RECORD: {
                     LogUtil.i(TAG,getString(R.string.START_RECORD));
                     showTip("已开始录音");
@@ -493,7 +533,11 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                     if (AIUIConstant.STATE_IDLE == mAIUIState) {
                         // 闲置状态，AIUI未开启
                         LogUtil.i(TAG,getString(R.string.STATE_IDLE));
-                        //showTip("STATE_IDLE");
+                        showTip("STATE_IDLE");
+                        //statue = status + 1;
+                        //if(status ！= 0)
+                        //    stopVoiceNlp();
+                        //     startActivity(new Intent(SpeechActivity.this,MainActivity.class));
                     } else if (AIUIConstant.STATE_READY == mAIUIState) {
                         // AIUI已就绪，等待唤醒
                         LogUtil.i(TAG,getString(R.string.STATE_READY));
@@ -556,6 +600,12 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
         mAIUIAgent.sendMessage(stopRecord);
     }
+
+    private void stopSpeech () {
+
+    }
+
+
 
     private void speekText(String text) {
         //1. 创建 SpeechSynthesizer 对象 , 第二个参数： 本地合成时传 InitListener
@@ -622,8 +672,9 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
             if (error == null) {
                 showTip(getString(R.string.PlayCompleted));
                 LogUtil.i(TAG,getString(R.string.PlayCompleted));
-                mTts.stopSpeaking();
-                startVoiceNlp();
+               // mTts.stopSpeaking();
+                //asrtest();  //开始命令词识别
+               // startVoiceNlp();
 
             } else if (error != null ) {
                 showTip(error.getPlainDescription( true));
@@ -656,7 +707,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
             mTts.setParameter(SpeechConstant.VOICE_NAME,voicer);
             //设置合成语速
             String yusu = mSharedPreferences.getString("speed_preference", "50");
-            LogUtil.e("yusu",yusu);
+            LogUtil.i("yusu",yusu);
             mTts.setParameter(SpeechConstant.SPEED,yusu );
 
             //mTts.setParameter(SpeechConstant.SPEED, mSharedPreferences.getString("speed_preference", "50"));
