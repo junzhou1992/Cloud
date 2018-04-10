@@ -56,8 +56,25 @@
         android:id="@+id/btn_startnlp"
         android:text="语义理解"/>
 
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/btn_createDB"
+        android:text="创建数据库"/>
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/btn_queryData"
+        android:text="查询数据库数据"/>
 
 
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/btn_addData"
+        android:text="添加数据库数据"/>
+    
 
 
 </LinearLayout>
