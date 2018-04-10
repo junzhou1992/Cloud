@@ -39,6 +39,13 @@ import com.iflytek.cloud.SpeechSynthesizer;
 import com.iflytek.cloud.SynthesizerListener;
 import com.thisway.hardlibrary.hbr740_control;
 
+import org.apache.poi.hssf.usermodel.HSSFCell;
+import org.apache.poi.hssf.usermodel.HSSFRow;
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.poifs.filesystem.POIFSFileSystem;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.litepal.LitePal;
@@ -46,6 +53,7 @@ import org.litepal.crud.DataSupport;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Iterator;
 import java.util.List;
 
 public class SpeechActivity extends AppCompatActivity implements View.OnClickListener {
@@ -59,7 +67,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     private static final String GRAMMAR_TYPE_ABNF = "abnf";
 
     private EditText et_input;
-    private Button btn_celnlp, btn_startspeektext,btn_startrecognize,btn_startHBRAsr,btn_startnlp,btn_createDB,btn_addData,btn_queryData ;
+    private Button btn_celnlp, btn_startspeektext,btn_startrecognize,btn_startHBRAsr,btn_startnlp,btn_offLineInteraction ;
 
     private String mEngineType = SpeechConstant.TYPE_CLOUD;
     private AIUIAgent mAIUIAgent = null;
@@ -174,9 +182,8 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         btn_startrecognize = (Button) findViewById(R.id.btn_startrecognize );
         btn_startHBRAsr = (Button) findViewById(R.id.btn_startHBRAsr);
         btn_startnlp = (Button) findViewById(R.id.btn_startnlp );
-        btn_createDB = (Button) findViewById(R.id.btn_createDB);
-        btn_addData = (Button) findViewById(R.id.btn_addData);
-        btn_queryData = (Button) findViewById(R.id.btn_queryData);
+        btn_offLineInteraction = (Button) findViewById(R.id.btn_offLineInteraction);
+
 
 
         btn_celnlp .setOnClickListener(this) ;
@@ -184,9 +191,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         btn_startrecognize.setOnClickListener(this);
         btn_startnlp.setOnClickListener(this);
         btn_startHBRAsr.setOnClickListener(this);
-        btn_createDB.setOnClickListener(this);
-        btn_addData.setOnClickListener(this);
-        btn_queryData.setOnClickListener(this);
+        btn_offLineInteraction.setOnClickListener(this);
     }
 
     @Override
@@ -213,33 +218,17 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 startHbr740AsrThread();
                 break;
 
-            case R.id.btn_createDB://创建数据库
-                LogUtil.i (TAG, "btn_createDB");
-                LitePal.getDatabase();
+
+            case R.id.btn_offLineInteraction://创建离线语音交互库
+                LogUtil.i (TAG, "btn_offLineInteraction");
+                Intent intent = new Intent(SpeechActivity.this, offLineDataActivity.class);
+                startActivity(intent);
                 break;
-
-
-            case R.id.btn_addData://添加数据库数据
-                LogUtil.i (TAG, "btn_addData");
-                RecognitionInstruction instruction1 = new RecognitionInstruction();
-                instruction1.setInstruction("询问电梯方位") ;
-                instruction1.setAnswer("直走左拐就到电梯口");
-                instruction1.save();
-                break;
-
-            case R.id.btn_queryData://添加数据库数据
-                LogUtil.i (TAG, "btn_queryData");
-                List<RecognitionInstruction> instructions = DataSupport.findAll(RecognitionInstruction.class);
-                for (RecognitionInstruction instruction:instructions) {
-                    Log.d("Data", " instruction is " + instruction.getInstruction());
-                    Log.d("Data", "answer is " + instruction.getAnswer());
-
-
-                    break;
-                }
         }
 
     }
+
+
     /******************************本地HBR*************************************/
 
     private void startHbr740AsrThread() {

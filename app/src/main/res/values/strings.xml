@@ -27,6 +27,7 @@
     <string name="PlayCompleted">播放完成</string>
 
     <string name="action_settings">Settings</string>
+    <string name="title_activity_off_line_db">offLineDBActivity</string>
 
 
 </resources>

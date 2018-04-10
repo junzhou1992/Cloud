@@ -22,7 +22,6 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <!-- 配置权限，用来记录应用配置信息 -->
     <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
-
     <uses-permission android:name="android.permission.CAMERA"/>
 
     <application
@@ -44,7 +43,13 @@
         <activity android:name=".settingActivity">
         </activity>
         <activity android:name=".MainActivity">
-
+        </activity>
+        <activity
+            android:name=".offLineDBActivity"
+            android:label="@string/title_activity_off_line_db"
+            android:theme="@style/AppTheme">
+        </activity>
+        <activity android:name=".offLineDataActivity">
         </activity>
     </application>
 

@@ -9,8 +9,12 @@ import org.litepal.crud.DataSupport;
 public class RecognitionInstruction extends DataSupport {
 
     private int id;
+
+
+    private int instuctionID;
     private String instruction;
     private String answer;
+
 
 
     public int getId() {
@@ -19,6 +23,14 @@ public class RecognitionInstruction extends DataSupport {
 
     public void setId(int id) {
         this.id = id;
+    }
+
+    public int getInstuctionID() {
+        return instuctionID;
+    }
+
+    public void setInstuctionID(int instuctionID) {
+        this.instuctionID = instuctionID;
     }
 
     public String getInstruction() {
