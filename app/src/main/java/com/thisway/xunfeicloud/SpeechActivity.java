@@ -38,6 +38,7 @@ import com.iflytek.cloud.SpeechRecognizer;
 import com.iflytek.cloud.SpeechSynthesizer;
 import com.iflytek.cloud.SynthesizerListener;
 import com.thisway.hardlibrary.hbr740_control;
+import com.thisway.hardlibrary.syn6288_control;
 
 import org.apache.poi.hssf.usermodel.HSSFCell;
 import org.apache.poi.hssf.usermodel.HSSFRow;
@@ -53,6 +54,7 @@ import org.litepal.crud.DataSupport;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -68,7 +70,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     private static final String GRAMMAR_TYPE_ABNF = "abnf";
 
     private EditText et_input;
-    private Button btn_celnlp, btn_startspeektext,btn_startrecognize,btn_startHBRAsr,btn_startnlp,btn_offLineInteraction ;
+    private Button btn_celnlp, btn_startspeektext,btn_startrecognize,btn_startHBRAsr,btn_startnlp,btn_offLineInteraction ,btn_syn6288speektext ,btn_stopHBRAsr;
 
     private String mEngineType = SpeechConstant.TYPE_CLOUD;
     private AIUIAgent mAIUIAgent = null;
@@ -116,7 +118,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                     Log.d("Data", " instruction is " + recognitionInstruction.getInstruction());
                     Log.d("Data", "answer is " + recognitionInstruction.getAnswer());
 
-                    et_input.setText("HBR740_Asr_ANSWER:" + recognitionInstruction.getInstruction() );
+                    et_input.setText(  recognitionInstruction.getInstruction() +  recognitionInstruction.getInstruction() );
 
 
                     break;
@@ -157,10 +159,12 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
         initView() ;
         createAgent();
+        startOpenHbr740Thread();
+        syn6288_control.open_syn6288();
         Looper looper = Looper.myLooper();
         messageHandler = new MessageHandler(looper);
         speekText("您好,请问您有什么问题");
-        startOpenHbr740Thread();
+
 
     }
 
@@ -210,7 +214,8 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         btn_startHBRAsr = (Button) findViewById(R.id.btn_startHBRAsr);
         btn_startnlp = (Button) findViewById(R.id.btn_startnlp );
         btn_offLineInteraction = (Button) findViewById(R.id.btn_offLineInteraction);
-
+        btn_stopHBRAsr = (Button) findViewById(R.id.btn_stopHBRAsr);
+        btn_syn6288speektext = (Button) findViewById(R.id.btn_syn6288speektext);
 
 
         btn_celnlp .setOnClickListener(this) ;
@@ -219,8 +224,12 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         btn_startnlp.setOnClickListener(this);
         btn_startHBRAsr.setOnClickListener(this);
         btn_offLineInteraction.setOnClickListener(this);
-    }
+        btn_stopHBRAsr .setOnClickListener(this);
+        btn_syn6288speektext.setOnClickListener(this);
 
+
+    }
+    String s = "欢迎来到酒店,请问您有什么问题";
     @Override
     public void onClick(View view) {
         switch (view.getId()){
@@ -242,15 +251,45 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 break;
             case R.id.btn_startHBRAsr://HBR语音识别（完成语音命令的识别）
                 LogUtil.i (TAG, "onClick: hbr740");
+
                 startHbr740AsrThread();
+
                 break;
 
+
+            case R.id.btn_stopHBRAsr://关闭本地语音识别
+                LogUtil.i (TAG, "btn_stopHBRAsr");
+               hbr740_control.close_hbr();
+                startOpenHbr740Thread();
+
+                break;
+
+            case R.id.btn_syn6288speektext://开始本地语音合成
+                LogUtil.i (TAG, "btn_syn6288speektext");
+
+                byte[] speakText = {};
+                Log.i(TAG, "onClick: start_tts");
+               // String text = et_input.getText().toString();
+               s =  et_input.getText().toString();
+
+                try {
+
+                    speakText = s.getBytes("gbk");
+
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                }
+                syn6288_control.tts(speakText);
+                break;
 
             case R.id.btn_offLineInteraction://创建离线语音交互库
                 LogUtil.i (TAG, "btn_offLineInteraction");
                 Intent intent = new Intent(SpeechActivity.this, offLineDataActivity.class);
                 startActivity(intent);
                 break;
+
+
+
         }
 
     }
@@ -263,11 +302,12 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         new Thread() {
             @Override
             public void run() {
+                LogUtil.i("Hbr740", "startHbr740AsrThread()");
                 int asRresult = hbr740_control.hbr_asr();
                 String outline_Result = "HBR_Result : NO RESULT";
                 Log.i(TAG, " "+ asRresult);
-                outline_Result = "HBR_Result : NO RESULT" + HBRResult(asRresult);
-                LogUtil.i("HBRResult", outline_Result);
+                outline_Result = "Hbr740 : NO RESULT" + HBRResult(asRresult);
+                LogUtil.i("Hbr740", outline_Result);
 
                 if (asRresult == 256) {
                     Message message = Message.obtain();
@@ -306,6 +346,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         new Thread() {
             @Override
             public void run() {
+              LogUtil.i(TAG,"OpenHbr740");
 
                 ret = hbr740_control.open_hbr();
                 if (ret < 0) {
@@ -336,15 +377,15 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 "                         language zh-CN;\n" +
                 "                          mode voice;\n" +
                 "        root $main;\n" +
-                "        $main =[我] [$want]  [$ask] [$Irrelevent1] [$go] ( $opera | $location | $content) [$Irrelevent2] ;\n" +
+                "        $main =[我] [$want]  [$ask] [$Irrelevent1] [酒店] [$go] ( $opera | $location | $content) [$Irrelevent2] ;\n" +
                 "        $want = 想 | 需要 | 可以;\n" +
                 "        $ask = 知道 | 请问 | 问 | 了解;\n" +
-                "        $Irrelevent1 = 怎么 | 在哪里 |  有哪些 |几点 ;\n"+
+                "        $Irrelevent1 = 怎么 | 在哪里 |  有哪些 | 几点 |  哪里有 | 什么时候 ;\n"+
                 "        $go = 去 | 要 | 到 | 向 | 走;\n" +
                 "        $opera = 点餐服务 | 洗衣服务  | 点餐 | 洗衣 | 用餐 | 退房 | 入住;\n" +
-                "        $content = 入住时间 | 退房时间 | 酒店押金 | 酒店房型 | 入住 | 退房 | 用餐时间  | 洗衣时间 | 点餐时间;\n" +
-                "        $location = 电梯 |楼梯 | 餐厅 | 中餐厅 | 西餐厅 |  健身房 | 会议室 | 失物招领处 | 行李寄存处 | 附近银行 | 附近商场 | 附近机场 | 咖啡馆;\n" +
-                "        $Irrelevent2 = 怎么走 | 在哪里 | 那里 | 有哪些 |是几点 | 是多少;  ";
+                "        $content = 入住时间 | 退房时间 | 押金 | 酒店房型 | 入住 | 退房 | 用餐时间  | 洗衣时间 | 点餐时间 | 寄存行李;\n" +
+                "        $location = 电梯 |楼梯 | 餐厅 | 中餐厅 | 西餐厅 |  健身房 | 会议室 | 失物招领处 | 行李寄存处 | 附近银行 | 附近商场 | 附近机场 | 娱乐中心 | 咖啡馆 | 附近地铁;\n" +
+                "        $Irrelevent2 = 怎么走 | 在哪里 | 那里 | 有哪些 |是几点 | 是多少 | 多少钱;  ";
 
         // 语法、词典临时变量
         String mContent;

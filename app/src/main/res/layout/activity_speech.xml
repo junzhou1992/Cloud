@@ -19,29 +19,11 @@
 
     <EditText
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="wrap_content"
         android:id="@+id/et_input"
         android:layout_margin="10dp"
         android:hint="请输入信息"/>
 
-    <Button
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/btn_offLineInteraction"
-        android:text="建立本地语音交互表"/>
-
-    <Button
-        android:id="@+id/btn_cacelnlp"
-        android:text="取消语义理解"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
-
-    <Button
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/btn_startspeektext"
-        android:text="语音合成"/>
 
     <Button
         android:layout_width="match_parent"
@@ -49,11 +31,42 @@
         android:id="@+id/btn_startrecognize"
         android:text="语法识别"/>
 
+
+
     <Button
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:id="@+id/btn_startHBRAsr"
         android:text="HBR本地语音识别"/>
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/btn_stopHBRAsr"
+        android:text="关闭HBR本地语音识别"/>
+
+
+
+    <Button
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:id="@+id/btn_startspeektext"
+    android:text="云语音合成"/>
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/btn_syn6288speektext"
+        android:text="syn6288本地语音合成"/>
+
+
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/btn_offLineInteraction"
+        android:text="建立语音交互表"/>
+
 
 
     <Button
@@ -61,6 +74,17 @@
         android:layout_height="wrap_content"
         android:id="@+id/btn_startnlp"
         android:text="语义理解"/>
+
+
+
+    <Button
+        android:id="@+id/btn_cacelnlp"
+        android:text="取消语义理解"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+
+
 
 
 
