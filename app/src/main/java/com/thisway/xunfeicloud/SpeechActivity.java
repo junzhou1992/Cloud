@@ -53,6 +53,7 @@ import org.litepal.crud.DataSupport;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
@@ -86,6 +87,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     private static final int  HBR740_Asr_ANSWER= 4;
     private Handler messageHandler;
     int ret = -1;
+    HashMap<Integer, Integer> hashMap = new HashMap<Integer, Integer>();
     //praviate int state = 0;
 
     private class MessageHandler extends Handler {
@@ -106,7 +108,16 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                     et_input.setText("HBR740_Asr_NO_ANSWER");
                     break;
                 case HBR740_Asr_ANSWER:
-                    et_input.setText("HBR740_Asr_ANSWER:" + msg.arg1);
+
+                    int result = msg.arg1;
+                    RecognitionInstruction     recognitionInstruction   =DataSupport.find(RecognitionInstruction.class,result);
+                    Log.d("Data", " id is " + recognitionInstruction.getId());
+                    Log.d("Data", " instuctionIDis " + recognitionInstruction.getInstuctionID());
+                    Log.d("Data", " instruction is " + recognitionInstruction.getInstruction());
+                    Log.d("Data", "answer is " + recognitionInstruction.getAnswer());
+
+                    et_input.setText("HBR740_Asr_ANSWER:" + recognitionInstruction.getInstruction() );
+
 
                     break;
                 default:
@@ -116,6 +127,22 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
             }
 
         }
+    }
+
+   private void queryDaTa()
+    {
+
+        List<RecognitionInstruction> instructions = DataSupport.findAll(RecognitionInstruction.class);
+        for (RecognitionInstruction instruction : instructions) {
+            Integer DBid= new Integer( instruction.getId()) ;
+            Log.d("Data", " id is " + DBid);
+            Integer instuctionID= new Integer( instruction.getInstuctionID()) ;
+            Log.d("Data", " instuctionIDis " + instuctionID);
+             hashMap.put(instuctionID,DBid);
+            Log.d("Data", " instruction is " + instruction.getInstruction());
+            Log.d("Data", "answer is " + instruction.getAnswer());
+        }
+
     }
 
 

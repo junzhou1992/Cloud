@@ -19,12 +19,15 @@ import org.litepal.crud.DataSupport;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
 public class offLineDataActivity extends AppCompatActivity implements View.OnClickListener {
     private static final String TAG = SpeechActivity.class.getSimpleName();
     private Button btn_createDB,btn_addData,btn_queryData, btn_deleteData;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,11 +66,13 @@ public class offLineDataActivity extends AppCompatActivity implements View.OnCli
                 LogUtil.i(TAG, "btn_queryData");
                 List<RecognitionInstruction> instructions = DataSupport.findAll(RecognitionInstruction.class);
                 for (RecognitionInstruction instruction : instructions) {
+
                     Log.d("Data", " id is " + instruction.getId());
                     Log.d("Data", " instuctionIDis " + instruction.getInstuctionID());
                     Log.d("Data", " instruction is " + instruction.getInstruction());
                     Log.d("Data", "answer is " + instruction.getAnswer());
                 }
+
 
 
                 break;
@@ -98,6 +103,7 @@ public class offLineDataActivity extends AppCompatActivity implements View.OnCli
             // Iterate over each row in the sheet
             Iterator<Row> rows = sheet.rowIterator();
             while (rows.hasNext()) {
+
                 HSSFRow row = (HSSFRow) rows.next();
                 System.out.println("Row #" + row.getRowNum());
                 //每一行 = 新建一个学生
@@ -107,7 +113,10 @@ public class offLineDataActivity extends AppCompatActivity implements View.OnCli
                 Iterator<Cell> cells = row.cellIterator();
 
                 HSSFCell cell_1 = (HSSFCell) cells.next();
+
                 LogUtil.i("EXCEL","number= " + (int) (cell_1.getNumericCellValue()));
+                if((int) (cell_1.getNumericCellValue()) == 0)
+                break;
                 instruction11.setInstuctionID((int) (cell_1.getNumericCellValue())); ;
 
                 HSSFCell cell_2 = (HSSFCell) cells.next();
@@ -120,7 +129,9 @@ public class offLineDataActivity extends AppCompatActivity implements View.OnCli
                 instruction11.setAnswer(cell_3.getStringCellValue()); ;
 
                 instruction11.save();
-                }
+ ;
+            }
+
 
 
         } catch (IOException ex) {
@@ -129,6 +140,8 @@ public class offLineDataActivity extends AppCompatActivity implements View.OnCli
         //刷新列表
         //getAllStudent();
     }
+
+
 
 
 

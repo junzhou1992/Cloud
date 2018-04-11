@@ -8,7 +8,7 @@ import org.litepal.crud.DataSupport;
 
 public class RecognitionInstruction extends DataSupport {
 
-    private int id;
+    private  int id;
 
 
     private int instuctionID;
