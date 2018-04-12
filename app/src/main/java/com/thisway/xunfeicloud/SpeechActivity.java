@@ -19,6 +19,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.RadioGroup;
 import android.widget.Toast;
 
 import com.iflytek.aiui.AIUIAgent;
@@ -36,6 +37,7 @@ import com.iflytek.cloud.SpeechConstant;
 import com.iflytek.cloud.SpeechError;
 import com.iflytek.cloud.SpeechRecognizer;
 import com.iflytek.cloud.SpeechSynthesizer;
+import com.iflytek.cloud.SpeechUtility;
 import com.iflytek.cloud.SynthesizerListener;
 import com.thisway.hardlibrary.hbr740_control;
 import com.thisway.hardlibrary.syn6288_control;
@@ -87,10 +89,19 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     private static final int  OPEN_HBR740_right= 2;
     private static final int  HBR740_Asr_NO_ANSWER= 3;
     private static final int  HBR740_Asr_ANSWER= 4;
+
+    private static final int  ASR_MIX= 1;
+    private static final int  ASR_LOCAL= 2;
+    private static final int  TTS_CLOUD= 3;
+    private static final int  TTS_LOCAL= 4;
+
+    private int tts_type = 0;
+    private int asr_type = 0;
+
     private Handler messageHandler;
     int ret = -1;
-    HashMap<Integer, Integer> hashMap = new HashMap<Integer, Integer>();
-    //praviate int state = 0;
+
+    String s = "欢迎来到酒店,请问您有什么问题";
 
     private class MessageHandler extends Handler {
         public MessageHandler(Looper looper) {
@@ -118,7 +129,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                     Log.d("Data", " instruction is " + recognitionInstruction.getInstruction());
                     Log.d("Data", "answer is " + recognitionInstruction.getAnswer());
 
-                    et_input.setText(  recognitionInstruction.getInstruction() +  recognitionInstruction.getInstruction() );
+                    et_input.setText(  recognitionInstruction.getInstruction() +  recognitionInstruction.getAnswer() );
 
 
                     break;
@@ -140,7 +151,6 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
             Log.d("Data", " id is " + DBid);
             Integer instuctionID= new Integer( instruction.getInstuctionID()) ;
             Log.d("Data", " instuctionIDis " + instuctionID);
-             hashMap.put(instuctionID,DBid);
             Log.d("Data", " instruction is " + instruction.getInstruction());
             Log.d("Data", "answer is " + instruction.getAnswer());
         }
@@ -163,8 +173,27 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         syn6288_control.open_syn6288();
         Looper looper = Looper.myLooper();
         messageHandler = new MessageHandler(looper);
-        speekText("您好,请问您有什么问题");
+       // speekText("您好,请问您有什么问题");
+        tts(TTS_CLOUD);
 
+    }
+
+    private  void tts(int type){
+
+        if (type == TTS_CLOUD){
+            speekText(s);
+        } else {
+            syn6288(s);
+        }
+    }
+
+
+    private void asr(int type){
+        if (type == ASR_MIX)
+            asrtest();  //云语法识别接口
+        else {
+            startHbr740AsrThread();
+        }
 
     }
 
@@ -227,9 +256,55 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         btn_stopHBRAsr .setOnClickListener(this);
         btn_syn6288speektext.setOnClickListener(this);
 
+        RadioGroup group = (RadioGroup) findViewById(R.id.asrRadioGroup);
+        group.check(R.id.asrRadioMix);
+        group.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+
+            @Override
+            public void onCheckedChanged(RadioGroup group, int checkedId) {
+
+
+                switch (checkedId) {
+                    case R.id.asrRadioLocal:  //本地语音合成
+                        tts_type = TTS_LOCAL;
+                        LogUtil.i("RadioGroup", "asrRadioLocal  " );
+                        break;
+                    case R.id.asrRadioMix:  //混合语音合合成
+                        tts_type = TTS_CLOUD ;
+                        LogUtil.i("RadioGroup", "asrRadioMix  " );
+
+                        break;
+                    default:
+                        break;
+                }
+            }
+        });
+
+
+        RadioGroup group2 = (RadioGroup) findViewById(R.id.ttsRadioGroup);
+        group2.check(R.id.ttsRadioMix);
+        group2.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+
+            @Override
+            public void onCheckedChanged(RadioGroup group, int checkedId) {
+                switch (checkedId) {
+                    case R.id.ttsRadioLocal:  //本地语音合成
+                        LogUtil.i("ttsRadioGroup", "asrRadioLocal  " );
+                        break;
+                    case R.id.ttsRadioMix:  //混合语音合合成
+                        LogUtil.i("ttsRadioGroup", "asrRadioMix  " );
+
+                        break;
+                    default:
+                        break;
+                }
+            }
+        });
 
     }
-    String s = "欢迎来到酒店,请问您有什么问题";
+
+
+
     @Override
     public void onClick(View view) {
         switch (view.getId()){
@@ -240,14 +315,17 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 startVoiceNlp();
                 break;
 
-            case R.id. btn_startspeektext:// 语音合成（把文字转声音）
-                String text = et_input.getText().toString();
-                speekText(text);
+            case R.id. btn_startspeektext:// 云语音合成（把文字转声音）
+               // String text = et_input.getText().toString();
+               // speekText(text);
+                s = et_input.getText().toString();
+                tts(TTS_CLOUD);
                 break;
 
             case R.id.btn_startrecognize://语法识别（完成语音命令的识别）
                 //stopVoiceNlp();
                 asrtest();
+                //asr(ASR_MIX);
                 break;
             case R.id.btn_startHBRAsr://HBR语音识别（完成语音命令的识别）
                 LogUtil.i (TAG, "onClick: hbr740");
@@ -266,20 +344,9 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
             case R.id.btn_syn6288speektext://开始本地语音合成
                 LogUtil.i (TAG, "btn_syn6288speektext");
-
-                byte[] speakText = {};
-                Log.i(TAG, "onClick: start_tts");
-               // String text = et_input.getText().toString();
-               s =  et_input.getText().toString();
-
-                try {
-
-                    speakText = s.getBytes("gbk");
-
-                } catch (UnsupportedEncodingException e) {
-                    e.printStackTrace();
-                }
-                syn6288_control.tts(speakText);
+                s = et_input.getText().toString();
+                tts(TTS_LOCAL);
+               // syn6288(s);
                 break;
 
             case R.id.btn_offLineInteraction://创建离线语音交互库
@@ -287,10 +354,25 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 Intent intent = new Intent(SpeechActivity.this, offLineDataActivity.class);
                 startActivity(intent);
                 break;
-
-
-
         }
+
+    }
+
+    /******************************本地SYN6288*************************************/
+    private void syn6288(String str) {
+
+        byte[] speakText = {};
+        Log.i(TAG, "onClick: start_tts");
+        // String text = et_input.getText().toString();
+       // s =  et_input.getText().toString();
+
+        try {
+            speakText = str.getBytes("gbk");
+
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        syn6288_control.tts(speakText);
 
     }
 
@@ -304,10 +386,8 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
             public void run() {
                 LogUtil.i("Hbr740", "startHbr740AsrThread()");
                 int asRresult = hbr740_control.hbr_asr();
-                String outline_Result = "HBR_Result : NO RESULT";
+
                 Log.i(TAG, " "+ asRresult);
-                outline_Result = "Hbr740 : NO RESULT" + HBRResult(asRresult);
-                LogUtil.i("Hbr740", outline_Result);
 
                 if (asRresult == 256) {
                     Message message = Message.obtain();
@@ -322,22 +402,6 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
             }
 
         }.start();
-    }
-
-    public  String HBRResult(int result){
-
-
-        String HBR740_Result = "HBR740_Result: ";
-
-
-
-        mStructions = getResources().getStringArray(R.array.HBRStructions);
-
-        //HBR740_Result = "HBR740_Result: "+  mStructions[20];  出来的是第21
-
-        LogUtil.i("HBRResult", HBR740_Result);
-
-        return HBR740_Result;
     }
 
 
@@ -679,6 +743,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                                         // if(text.equals("语法识别"))
                                             //stopVoiceNlp();
                                             // asrtest();
+                                         // asr(TTS_CLOUD);
                                         //自定义问答中定义了语法识别  如果是客户说了语法识别 就进入语法识别中
 
 
@@ -693,7 +758,15 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                                 if (i ==0)
                                 {
                                     stopVoiceNlp();
-                                    speekText(et_input.getText().toString());  //开始语音合成
+
+                                   // speekText(et_input.getText().toString());  //开始语音合成
+                                    if(tts_type == TTS_CLOUD)
+                                       // speekText(et_input.getText().toString());
+                                        tts(TTS_CLOUD);
+                                    else{
+                                        tts(TTS_LOCAL);
+                                       // syn6288(et_input.getText().toString());
+                                    }
                                 }
                             }
                         }
@@ -886,6 +959,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 LogUtil.i(TAG,getString(R.string.PlayCompleted));
                // mTts.stopSpeaking();
                 //asrtest();  //开始命令词识别
+                //asr(TTS_CLOUD);
                // startVoiceNlp();
 
             } else if (error != null ) {

@@ -24,6 +24,65 @@
         android:layout_margin="10dp"
         android:hint="请输入信息"/>
 
+    <RadioGroup
+        android:id="@+id/asrRadioGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:contentDescription="语音识别"
+        android:orientation="horizontal" >
+
+        <RadioButton
+            android:id="@+id/asrRadioMix"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="混合语音识别" >
+        </RadioButton>
+
+        <RadioButton
+            android:id="@+id/asrRadioLocal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="本地HBR语音识别" >
+        </RadioButton>
+    </RadioGroup>
+
+    <View
+
+        android:layout_width="fill_parent"
+        android:layout_marginTop="10dp"
+        android:layout_height="1dp"
+        android:layout_marginLeft="5dp"
+        android:layout_marginRight="5dp"
+        android:background="#CCCCCC" />
+
+    <RadioGroup
+        android:id="@+id/ttsRadioGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:contentDescription="语音合成"
+        android:orientation="horizontal" >
+
+        <RadioButton
+            android:id="@+id/ttsRadioMix"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="在线语音合成" >
+        </RadioButton>
+
+        <RadioButton
+            android:id="@+id/ttsRadioLocal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="本地SYN6288语音合成" >
+        </RadioButton>
+
+    </RadioGroup>
+
+
 
     <Button
         android:layout_width="match_parent"
@@ -38,12 +97,6 @@
         android:layout_height="wrap_content"
         android:id="@+id/btn_startHBRAsr"
         android:text="HBR本地语音识别"/>
-
-    <Button
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/btn_stopHBRAsr"
-        android:text="关闭HBR本地语音识别"/>
 
 
 
@@ -65,7 +118,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:id="@+id/btn_offLineInteraction"
-        android:text="建立语音交互表"/>
+        android:text="建立语音交互数据库"/>
+
+
 
 
 
@@ -75,6 +130,11 @@
         android:id="@+id/btn_startnlp"
         android:text="语义理解"/>
 
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/btn_stopHBRAsr"
+        android:text="关闭HBR本地语音识别"/>
 
 
     <Button
@@ -82,9 +142,6 @@
         android:text="取消语义理解"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
-
-
-
 
 
 
