@@ -57,8 +57,6 @@ import org.litepal.crud.DataSupport;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 
 public class SpeechActivity extends AppCompatActivity implements View.OnClickListener {
@@ -72,7 +70,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     private static final String GRAMMAR_TYPE_ABNF = "abnf";
 
     private EditText et_input;
-    private Button btn_celnlp, btn_startspeektext,btn_startrecognize,btn_startHBRAsr,btn_startnlp,btn_offLineInteraction ,btn_syn6288speektext ,btn_stopHBRAsr;
+    private Button btn_celnlp, btn_startspeektext,btn_startrecognize,btn_startnlp,btn_offLineInteraction ;
 
     private String mEngineType = SpeechConstant.TYPE_CLOUD;
     private AIUIAgent mAIUIAgent = null;
@@ -83,7 +81,6 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
     private String[] mCloudVoicersEntries;
     private String[] mCloudVoicersValue ;
-    private String[] mStructions;
 
     private static final int  OPEN_HBR740_ERROR= 1;
     private static final int  OPEN_HBR740_right= 2;
@@ -95,8 +92,8 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     private static final int  TTS_CLOUD= 3;
     private static final int  TTS_LOCAL= 4;
 
-    private int tts_type = 0;
-    private int asr_type = 0;
+    private int tts_type = 3;
+    private int asr_type = 1;
 
     private Handler messageHandler;
     int ret = -1;
@@ -130,7 +127,6 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                     Log.d("Data", "answer is " + recognitionInstruction.getAnswer());
 
                     et_input.setText(  recognitionInstruction.getInstruction() +  recognitionInstruction.getAnswer() );
-
 
                     break;
                 default:
@@ -173,8 +169,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         syn6288_control.open_syn6288();
         Looper looper = Looper.myLooper();
         messageHandler = new MessageHandler(looper);
-       // speekText("您好,请问您有什么问题");
-        tts(TTS_CLOUD);
+        tts(tts_type);
 
     }
 
@@ -187,16 +182,14 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         }
     }
 
-
     private void asr(int type){
-        if (type == ASR_MIX)
+        if (type == ASR_MIX) {
             asrtest();  //云语法识别接口
-        else {
+            startHbr740AsrThread();
+        } else {
             startHbr740AsrThread();
         }
-
     }
-
 
 
     //重写onCreateOptionsMenu方法
@@ -240,39 +233,28 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         btn_celnlp= (Button) findViewById(R.id.btn_cacelnlp );
         btn_startspeektext = (Button) findViewById(R.id.btn_startspeektext );
         btn_startrecognize = (Button) findViewById(R.id.btn_startrecognize );
-        btn_startHBRAsr = (Button) findViewById(R.id.btn_startHBRAsr);
         btn_startnlp = (Button) findViewById(R.id.btn_startnlp );
         btn_offLineInteraction = (Button) findViewById(R.id.btn_offLineInteraction);
-        btn_stopHBRAsr = (Button) findViewById(R.id.btn_stopHBRAsr);
-        btn_syn6288speektext = (Button) findViewById(R.id.btn_syn6288speektext);
-
 
         btn_celnlp .setOnClickListener(this) ;
         btn_startspeektext .setOnClickListener(this) ;
         btn_startrecognize.setOnClickListener(this);
         btn_startnlp.setOnClickListener(this);
-        btn_startHBRAsr.setOnClickListener(this);
         btn_offLineInteraction.setOnClickListener(this);
-        btn_stopHBRAsr .setOnClickListener(this);
-        btn_syn6288speektext.setOnClickListener(this);
 
         RadioGroup group = (RadioGroup) findViewById(R.id.asrRadioGroup);
         group.check(R.id.asrRadioMix);
         group.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
-
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
-
-
                 switch (checkedId) {
-                    case R.id.asrRadioLocal:  //本地语音合成
-                        tts_type = TTS_LOCAL;
+                    case R.id.asrRadioLocal:  //本地语音识别
                         LogUtil.i("RadioGroup", "asrRadioLocal  " );
+                        asr_type = ASR_LOCAL;
                         break;
-                    case R.id.asrRadioMix:  //混合语音合合成
-                        tts_type = TTS_CLOUD ;
+                    case R.id.asrRadioMix:  //混合语音识别
                         LogUtil.i("RadioGroup", "asrRadioMix  " );
-
+                        asr_type = ASR_MIX;
                         break;
                     default:
                         break;
@@ -284,16 +266,16 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         RadioGroup group2 = (RadioGroup) findViewById(R.id.ttsRadioGroup);
         group2.check(R.id.ttsRadioMix);
         group2.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
-
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
                 switch (checkedId) {
                     case R.id.ttsRadioLocal:  //本地语音合成
+                        tts_type = TTS_LOCAL;
                         LogUtil.i("ttsRadioGroup", "asrRadioLocal  " );
                         break;
                     case R.id.ttsRadioMix:  //混合语音合合成
                         LogUtil.i("ttsRadioGroup", "asrRadioMix  " );
-
+                        tts_type = TTS_CLOUD ;
                         break;
                     default:
                         break;
@@ -315,38 +297,13 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 startVoiceNlp();
                 break;
 
-            case R.id. btn_startspeektext:// 云语音合成（把文字转声音）
-               // String text = et_input.getText().toString();
-               // speekText(text);
+            case R.id. btn_startspeektext:// 语音合成（把文字转声音）
                 s = et_input.getText().toString();
-                tts(TTS_CLOUD);
+                tts(tts_type);
                 break;
 
             case R.id.btn_startrecognize://语法识别（完成语音命令的识别）
-                //stopVoiceNlp();
-                asrtest();
-                //asr(ASR_MIX);
-                break;
-            case R.id.btn_startHBRAsr://HBR语音识别（完成语音命令的识别）
-                LogUtil.i (TAG, "onClick: hbr740");
-
-                startHbr740AsrThread();
-
-                break;
-
-
-            case R.id.btn_stopHBRAsr://关闭本地语音识别
-                LogUtil.i (TAG, "btn_stopHBRAsr");
-               hbr740_control.close_hbr();
-                startOpenHbr740Thread();
-
-                break;
-
-            case R.id.btn_syn6288speektext://开始本地语音合成
-                LogUtil.i (TAG, "btn_syn6288speektext");
-                s = et_input.getText().toString();
-                tts(TTS_LOCAL);
-               // syn6288(s);
+                asr(asr_type);
                 break;
 
             case R.id.btn_offLineInteraction://创建离线语音交互库
@@ -360,20 +317,14 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
     /******************************本地SYN6288*************************************/
     private void syn6288(String str) {
-
         byte[] speakText = {};
         Log.i(TAG, "onClick: start_tts");
-        // String text = et_input.getText().toString();
-       // s =  et_input.getText().toString();
-
         try {
             speakText = str.getBytes("gbk");
-
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
         syn6288_control.tts(speakText);
-
     }
 
 
@@ -743,7 +694,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                                         // if(text.equals("语法识别"))
                                             //stopVoiceNlp();
                                             // asrtest();
-                                         // asr(TTS_CLOUD);
+                                         // asr(asr_type);
                                         //自定义问答中定义了语法识别  如果是客户说了语法识别 就进入语法识别中
 
 
@@ -758,15 +709,8 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                                 if (i ==0)
                                 {
                                     stopVoiceNlp();
-
-                                   // speekText(et_input.getText().toString());  //开始语音合成
-                                    if(tts_type == TTS_CLOUD)
-                                       // speekText(et_input.getText().toString());
-                                        tts(TTS_CLOUD);
-                                    else{
-                                        tts(TTS_LOCAL);
-                                       // syn6288(et_input.getText().toString());
-                                    }
+                                    s = et_input.getText().toString();
+                                    tts(tts_type);
                                 }
                             }
                         }
@@ -959,7 +903,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 LogUtil.i(TAG,getString(R.string.PlayCompleted));
                // mTts.stopSpeaking();
                 //asrtest();  //开始命令词识别
-                //asr(TTS_CLOUD);
+               // asr(asr_type);
                // startVoiceNlp();
 
             } else if (error != null ) {
