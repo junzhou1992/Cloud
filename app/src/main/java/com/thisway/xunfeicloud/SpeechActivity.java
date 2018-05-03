@@ -1,5 +1,6 @@
 package com.thisway.xunfeicloud;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -70,7 +71,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     private static final String GRAMMAR_TYPE_ABNF = "abnf";
 
     private EditText et_input;
-    private Button btn_celnlp, btn_startspeektext,btn_startrecognize,btn_startnlp,btn_offLineInteraction ;
+    private Button btn_celnlp, btn_startspeektext,btn_startrecognize,btn_startnlp ;
 
     private String mEngineType = SpeechConstant.TYPE_CLOUD;
     private AIUIAgent mAIUIAgent = null;
@@ -92,8 +93,8 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     private static final int  TTS_CLOUD= 3;
     private static final int  TTS_LOCAL= 4;
 
-    private int tts_type = 3;
-    private int asr_type = 1;
+    private static int tts_type = TTS_CLOUD;
+    private static int asr_type =  ASR_MIX;
 
     private Handler messageHandler;
     int ret = -1;
@@ -138,21 +139,6 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         }
     }
 
-   private void queryDaTa()
-    {
-
-        List<RecognitionInstruction> instructions = DataSupport.findAll(RecognitionInstruction.class);
-        for (RecognitionInstruction instruction : instructions) {
-            Integer DBid= new Integer( instruction.getId()) ;
-            Log.d("Data", " id is " + DBid);
-            Integer instuctionID= new Integer( instruction.getInstuctionID()) ;
-            Log.d("Data", " instuctionIDis " + instuctionID);
-            Log.d("Data", " instruction is " + instruction.getInstruction());
-            Log.d("Data", "answer is " + instruction.getAnswer());
-        }
-
-    }
-
 
 
 
@@ -163,6 +149,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         mSharedPreferences = getSharedPreferences(settingFragment.PREFER_NAME, MODE_PRIVATE);
 
         mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
+        checkNetwork(this);
         initView() ;
         createAgent();
         startOpenHbr740Thread();
@@ -192,6 +179,27 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     }
 
 
+    // 如果没有网络，则弹出网络设置对话框
+    public static void checkNetwork(final Activity activity) {
+        if (!IsInternet.isNetworkAvalible(activity)) {
+                LogUtil.i("checkNetwork " ,"当前没有可以使用的网络，请设置网络！"  );
+            tts_type = TTS_LOCAL;
+            asr_type = ASR_LOCAL;
+
+        }else {
+            LogUtil.i("checkNetwork " ,"当前有可用网络！"  );
+            tts_type = TTS_CLOUD;
+            asr_type =  ASR_MIX;
+        }
+
+    }
+
+
+
+
+
+
+
     //重写onCreateOptionsMenu方法
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.toolbar, menu);
@@ -204,6 +212,9 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         switch (item.getItemId()) {
             case R.id.backup:
                 Toast.makeText(this, "You clicked backup", Toast.LENGTH_SHORT).show();
+                LogUtil.i (TAG, "btn_offLineInteraction");
+                Intent intent1 = new Intent(SpeechActivity.this, offLineDataActivity.class);
+                startActivity(intent1);
                 break;
 
             case R.id.settings:
@@ -234,16 +245,23 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         btn_startspeektext = (Button) findViewById(R.id.btn_startspeektext );
         btn_startrecognize = (Button) findViewById(R.id.btn_startrecognize );
         btn_startnlp = (Button) findViewById(R.id.btn_startnlp );
-        btn_offLineInteraction = (Button) findViewById(R.id.btn_offLineInteraction);
+
 
         btn_celnlp .setOnClickListener(this) ;
         btn_startspeektext .setOnClickListener(this) ;
         btn_startrecognize.setOnClickListener(this);
         btn_startnlp.setOnClickListener(this);
-        btn_offLineInteraction.setOnClickListener(this);
+
 
         RadioGroup group = (RadioGroup) findViewById(R.id.asrRadioGroup);
-        group.check(R.id.asrRadioMix);
+        if (  asr_type ==  ASR_MIX){
+            group.check(R.id.asrRadioMix);
+            LogUtil.i("type", "asrRadioMix  " );
+        } else{
+            group.check(R.id.asrRadioLocal);
+            LogUtil.i("type", "asrRadioLocal  " );
+        }
+
         group.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
@@ -264,7 +282,16 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
 
         RadioGroup group2 = (RadioGroup) findViewById(R.id.ttsRadioGroup);
-        group2.check(R.id.ttsRadioMix);
+        if (  tts_type == TTS_CLOUD){
+            group2.check(R.id.ttsRadioMix);
+            LogUtil.i("type", "ttsRadioMix  " );
+        } else{
+            group2.check(R.id.ttsRadioLocal);
+            LogUtil.i("type", "ttsRadioLocal " );
+        }
+
+
+        //group2.check(R.id.ttsRadioMix);
         group2.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
@@ -306,11 +333,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 asr(asr_type);
                 break;
 
-            case R.id.btn_offLineInteraction://创建离线语音交互库
-                LogUtil.i (TAG, "btn_offLineInteraction");
-                Intent intent = new Intent(SpeechActivity.this, offLineDataActivity.class);
-                startActivity(intent);
-                break;
+
         }
 
     }
@@ -392,15 +415,16 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 "                         language zh-CN;\n" +
                 "                          mode voice;\n" +
                 "        root $main;\n" +
-                "        $main =[我] [$want]  [$ask] [$Irrelevent1] [酒店] [$go] ( $opera | $location | $content) [$Irrelevent2] ;\n" +
+                "        $main =[我] [$want]  [$ask]  [酒店] [$Irrelevent1] [酒店] [$go] ( $movement | $opera | $location | $content) [$Irrelevent2] ;\n" +
                 "        $want = 想 | 需要 | 可以;\n" +
                 "        $ask = 知道 | 请问 | 问 | 了解;\n" +
-                "        $Irrelevent1 = 怎么 | 在哪里 |  有哪些 | 几点 |  哪里有 | 什么时候 ;\n"+
+                "        $Irrelevent1 = 怎么 | 在哪里 |  有哪些 | 几点 |  哪里有 | 什么时候 | 如何 ;\n"+
                 "        $go = 去 | 要 | 到 | 向 | 走;\n" +
+                "        $movement = 前进 |后退 |原地左转| 原地右转 | 前进左转 | 前进右转 ;\n" +
                 "        $opera = 点餐服务 | 洗衣服务  | 点餐 | 洗衣 | 用餐 | 退房 | 入住;\n" +
-                "        $content = 入住时间 | 退房时间 | 押金 | 酒店房型 | 入住 | 退房 | 用餐时间  | 洗衣时间 | 点餐时间 | 寄存行李;\n" +
+                "        $content = 入住时间 | 退房时间 | 押金 | 房型 | 入住 | 退房 | 用餐时间  | 洗衣时间 | 点餐时间 | 寄存行李;\n" +
                 "        $location = 电梯 |楼梯 | 餐厅 | 中餐厅 | 西餐厅 |  健身房 | 会议室 | 失物招领处 | 行李寄存处 | 附近银行 | 附近商场 | 附近机场 | 娱乐中心 | 咖啡馆 | 附近地铁;\n" +
-                "        $Irrelevent2 = 怎么走 | 在哪里 | 那里 | 有哪些 |是几点 | 是多少 | 多少钱;  ";
+                "        $Irrelevent2 = 怎么走 | 在哪里 | 那里 | 有哪些 |是几点 | 是多少 | 多少钱 | 如何走;  ";
 
         // 语法、词典临时变量
         String mContent;

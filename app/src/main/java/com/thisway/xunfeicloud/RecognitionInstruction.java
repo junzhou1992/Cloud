@@ -8,7 +8,7 @@ import org.litepal.crud.DataSupport;
 
 public class RecognitionInstruction extends DataSupport {
 
-    private  int id;
+    private  long id;
 
 
     private int instuctionID;
@@ -17,11 +17,11 @@ public class RecognitionInstruction extends DataSupport {
 
 
 
-    public int getId() {
+    public long getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(long id) {
         this.id = id;
     }
 

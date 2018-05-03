@@ -28,7 +28,7 @@
         android:id="@+id/asrRadioGroup"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:contentDescription="语音识别"
+        android:contentDescription="语音识别类型"
         android:orientation="horizontal" >
 
         <RadioButton
@@ -61,7 +61,7 @@
         android:id="@+id/ttsRadioGroup"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:contentDescription="语音合成"
+        android:contentDescription="语音合成类型"
         android:orientation="horizontal" >
 
         <RadioButton
@@ -91,12 +91,12 @@
         android:text="语音识别"/>
 
 
-
     <Button
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/btn_offLineInteraction"
-        android:text="建立语音交互数据库"/>
+        android:id="@+id/btn_startspeektext"
+        android:text="语音合成"/>
+
 
 
     <Button
@@ -107,17 +107,19 @@
 
 
 
+
+
+
     <Button
         android:id="@+id/btn_cacelnlp"
         android:text="取消语义理解"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
-    <Button
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/btn_startspeektext"
-        android:text="语音合成"/>
+
+
+
+
 
 
 
