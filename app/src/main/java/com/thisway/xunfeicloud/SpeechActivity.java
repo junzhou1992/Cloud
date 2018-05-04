@@ -40,6 +40,7 @@ import com.iflytek.cloud.SpeechRecognizer;
 import com.iflytek.cloud.SpeechSynthesizer;
 import com.iflytek.cloud.SpeechUtility;
 import com.iflytek.cloud.SynthesizerListener;
+import com.iflytek.cloud.util.ResourceUtil;
 import com.thisway.hardlibrary.hbr740_control;
 import com.thisway.hardlibrary.syn6288_control;
 
@@ -69,6 +70,12 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
     private static final String KEY_GRAMMAR_ABNF_ID = "grammar_abnf_id";
     private static final String GRAMMAR_TYPE_ABNF = "abnf";
+    private  final String GRAMMAR_TYPE_BNF = "bnf";
+
+    // 本地语法构建路径
+    private String grmPath = Environment.getExternalStorageDirectory()
+            .getAbsolutePath() + "/msc/test";
+
 
     private EditText et_input;
     private Button btn_celnlp, btn_startspeektext,btn_startrecognize,btn_startnlp ;
@@ -172,7 +179,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     private void asr(int type){
         if (type == ASR_MIX) {
             asrtest();  //云语法识别接口
-            startHbr740AsrThread();
+           // startHbr740AsrThread();
         } else {
             startHbr740AsrThread();
         }
@@ -426,31 +433,91 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 "        $location = 电梯 |楼梯 | 餐厅 | 中餐厅 | 西餐厅 |  健身房 | 会议室 | 失物招领处 | 行李寄存处 | 附近银行 | 附近商场 | 附近机场 | 娱乐中心 | 咖啡馆 | 附近地铁;\n" +
                 "        $Irrelevent2 = 怎么走 | 在哪里 | 那里 | 有哪些 |是几点 | 是多少 | 多少钱 | 如何走;  ";
 
+       String mLocalGrammar = "#BNF+IAT 1.0 UTF-8;\n" +
+               "!grammar call;\n" +
+               "!slot <want>;\n" +
+               "!slot <dialpre>;\n" +
+               "!slot <dialsuf>;\n" +
+               "!slot <contact>;\n" +
+               "!slot <dialcmd>;\n" +
+               "!start <callstart>;\n" +
+               "<callstart>:[<want>]<dial>|<dialcmd>;\n" +
+               "<want>:我想;\n" +
+               "<dialcmd>:打电话|打个电话|我想打电话|拨打电话|我要打电话|电话;\n" +
+               "<dial>:<dialpre><contact>[<dialsuf>];\n" +
+               "<dialpre>:打电话给|打个电话给|给|拨打;\n" +
+               "<dialsuf>:打电话|打个电话|的电话|的号码;\n" +
+               "<contact>:张海洋;";
+
         // 语法、词典临时变量
         String mContent;
         // 函数调用返回值
         int ret = 0;
 
-        mEngineType = SpeechConstant.TYPE_CLOUD;
+
+       // mEngineType = SpeechConstant.TYPE_CLOUD;
+        mEngineType = SpeechConstant.TYPE_LOCAL;
 
         // 初始化识别对象
         mAsr = SpeechRecognizer.createRecognizer(SpeechActivity.this, mInitListener);
+
+        //初始化语法  命令词
         //mCloudGrammar = FucUtil.readFile(this,"grammar_sample.abnf","utf-8");
+        //mLocalGrammar = FucUtil.readFile(this,"call.bnf", "utf-8");
 
         mSharedPreferences_asr = getSharedPreferences(getPackageName(),	MODE_PRIVATE);
 
         // mContent = new String(mCloudGrammar);
 
-        mAsr.setParameter(SpeechConstant.TEXT_ENCODING,"utf-8");
-        ret = mAsr.buildGrammar(GRAMMAR_TYPE_ABNF, mCloudGrammar, mCloudGrammarListener);
-        if(ret != ErrorCode.SUCCESS)
-            showTip("语法构建失败,错误码：" + ret);
+       // mAsr.setParameter(SpeechConstant.TEXT_ENCODING,"utf-8");
+       // ret = mAsr.buildGrammar(GRAMMAR_TYPE_ABNF, mCloudGrammar, mCloudGrammarListener);
+       // if(ret != ErrorCode.SUCCESS)
+            //showTip("语法构建失败,错误码：" + ret);
+        //设置参数（指定引擎类型 grammarId ）
+       //mAsr.setParameter(SpeechConstant.ENGINE_TYPE, mEngineType);
+        //String grammarId = mSharedPreferences_asr.getString(KEY_GRAMMAR_ABNF_ID, null);
+       // mAsr.setParameter(SpeechConstant.CLOUD_GRAMMAR, grammarId);
 
+       // showTip("上传预设关键词/语法文件");
+        LogUtil.i("asr","语法文件");
+        // 本地-构建语法文件，生成语法id
+        if (mEngineType.equals(SpeechConstant.TYPE_LOCAL)) {
 
-        //指定引擎类型
-        mAsr.setParameter(SpeechConstant.ENGINE_TYPE, mEngineType);
-        String grammarId = mSharedPreferences_asr.getString(KEY_GRAMMAR_ABNF_ID, null);
-        mAsr.setParameter(SpeechConstant.CLOUD_GRAMMAR, grammarId);
+            mContent = new String(mLocalGrammar);
+            mAsr.setParameter(SpeechConstant.PARAMS, null);
+            // 设置文本编码格式
+            mAsr.setParameter(SpeechConstant.TEXT_ENCODING,"utf-8");
+            // 设置引擎类型
+            mAsr.setParameter(SpeechConstant.ENGINE_TYPE, mEngineType);
+            // 设置语法构建路径
+            mAsr.setParameter(ResourceUtil.GRM_BUILD_PATH, grmPath);
+            //使用8k音频的时候请解开注释
+//					mAsr.setParameter(SpeechConstant.SAMPLE_RATE, "8000");
+            // 设置资源路径
+            mAsr.setParameter(ResourceUtil.ASR_RES_PATH, getResourcePath());
+            ret = mAsr.buildGrammar(GRAMMAR_TYPE_BNF, mContent, mCloudGrammarListener);
+            if(ret != ErrorCode.SUCCESS){
+                showTip("语法构建失败,错误码：" + ret);
+            }
+        }
+        // 在线-构建语法文件，生成语法id
+        else {
+            LogUtil.i("asr","生成语法id");
+            mContent = new String(mCloudGrammar);
+            // 指定引擎类型
+            mAsr.setParameter(SpeechConstant.ENGINE_TYPE, mEngineType);
+            // 设置文本编码格式
+            mAsr.setParameter(SpeechConstant.TEXT_ENCODING,"utf-8");
+            ret = mAsr.buildGrammar(GRAMMAR_TYPE_ABNF, mContent, mCloudGrammarListener);
+            if(ret != ErrorCode.SUCCESS)
+                showTip("语法构建失败,错误码：" + ret);
+        }
+
+        if (!setAsrParam()) {
+            showTip("请先构建语法。");
+            return;
+        };
+
         ret = mAsr.startListening(mRecognizerListener);
         if (ret != ErrorCode.SUCCESS) {
             showTip("识别失败,错误码: " + ret);
@@ -460,6 +527,72 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
     }
 
+
+    /**
+     * 参数设置
+     * @param param
+     * @return
+     */
+    public boolean setAsrParam(){
+        boolean result = false;
+        // 清空参数
+        mAsr.setParameter(SpeechConstant.PARAMS, null);
+        // 设置识别引擎
+        mAsr.setParameter(SpeechConstant.ENGINE_TYPE, mEngineType);
+        if("cloud".equalsIgnoreCase(mEngineType))
+        {
+
+            //String grammarId = mSharedPreferences_asr.getString(KEY_GRAMMAR_ABNF_ID, null);
+
+            String grammarId =  mSharedPreferences_asr.getString(KEY_GRAMMAR_ABNF_ID, null);
+            if(TextUtils.isEmpty(grammarId))
+            {
+                result =  false;
+            }else {
+                // 设置返回结果格式
+               // mAsr.setParameter(SpeechConstant.RESULT_TYPE, mResultType);
+                // 设置云端识别使用的语法id
+                mAsr.setParameter(SpeechConstant.CLOUD_GRAMMAR, grammarId);
+                result =  true;
+            }
+        }
+        else
+        {
+            // 设置本地识别资源
+            mAsr.setParameter(ResourceUtil.ASR_RES_PATH, getResourcePath());
+            // 设置语法构建路径
+            mAsr.setParameter(ResourceUtil.GRM_BUILD_PATH, grmPath);
+            // 设置返回结果格式
+           // mAsr.setParameter(SpeechConstant.RESULT_TYPE, mResultType);
+            // 设置本地识别使用语法id
+            mAsr.setParameter(SpeechConstant.LOCAL_GRAMMAR, "call");
+            // 设置识别的门限值
+            mAsr.setParameter(SpeechConstant.MIXED_THRESHOLD, "30");
+            // 使用8k音频的时候请解开注释
+//			mAsr.setParameter(SpeechConstant.SAMPLE_RATE, "8000");
+            result = true;
+        }
+
+        // 设置音频保存路径，保存音频格式支持pcm、wav，设置路径为sd卡请注意WRITE_EXTERNAL_STORAGE权限
+        // 注：AUDIO_FORMAT参数语记需要更新版本才能生效
+        mAsr.setParameter(SpeechConstant.AUDIO_FORMAT,"wav");
+        mAsr.setParameter(SpeechConstant.ASR_AUDIO_PATH, Environment.getExternalStorageDirectory()+"/msc/asr.wav");
+        return result;
+    }
+
+    //获取识别资源路径
+    private String getResourcePath(){
+        StringBuffer tempBuffer = new StringBuffer();
+        //识别通用资源
+        tempBuffer.append(ResourceUtil.generateResourcePath(this, ResourceUtil.RESOURCE_TYPE.assets, "asr/common.jet"));
+        //识别8k资源-使用8k的时候请解开注释
+//		tempBuffer.append(";");
+//		tempBuffer.append(ResourceUtil.generateResourcePath(this, RESOURCE_TYPE.assets, "asr/common_8k.jet"));
+        return tempBuffer.toString();
+    }
+
+
+
     /**
      * 云端构建语法监听器。
      */
@@ -467,11 +600,13 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         @Override
         public void onBuildFinish(String grammarId, SpeechError error) {
             if(error == null){
-                String grammarID = new String(grammarId);
-                SharedPreferences.Editor editor =  mSharedPreferences_asr.edit();
-                if(!TextUtils.isEmpty(grammarId))
-                    editor.putString(KEY_GRAMMAR_ABNF_ID, grammarID);
-                editor.commit();
+                if (mEngineType.equals(SpeechConstant.TYPE_CLOUD)) {
+                    String grammarID = new String(grammarId);
+                    SharedPreferences.Editor editor = mSharedPreferences_asr.edit();
+                    if (!TextUtils.isEmpty(grammarId))
+                        editor.putString(KEY_GRAMMAR_ABNF_ID, grammarID);
+                    editor.commit();
+                }
                 showTip("语法构建成功：" + grammarId);
             }else{
                 showTip("语法构建失败,错误码：" + error.getErrorCode());
@@ -535,9 +670,6 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                     //text = JsonParser.myParseGrammarResult(result.getResultString());
                     asrResultProcess.resultProcess(text);
                // }
-
-
-
 
 
 
