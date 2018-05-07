@@ -430,24 +430,29 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 "        $movement = 前进 |后退 |原地左转| 原地右转 | 前进左转 | 前进右转 ;\n" +
                 "        $opera = 点餐服务 | 洗衣服务  | 点餐 | 洗衣 | 用餐 | 退房 | 入住;\n" +
                 "        $content = 入住时间 | 退房时间 | 押金 | 房型 | 入住 | 退房 | 用餐时间  | 洗衣时间 | 点餐时间 | 寄存行李;\n" +
-                "        $location = 电梯 |楼梯 | 餐厅 | 中餐厅 | 西餐厅 |  健身房 | 会议室 | 失物招领处 | 行李寄存处 | 附近银行 | 附近商场 | 附近机场 | 娱乐中心 | 咖啡馆 | 附近地铁;\n" +
+                "        $location = 电梯 |楼梯 | 餐厅 | 中餐厅 | 西餐厅 |  健身房 |  会议室 | 失物招领处 | 行李寄存处 | 附近银行 | 附近商场 | 附近机场 | 娱乐中心 | 咖啡馆 | 附近地铁;\n" +
                 "        $Irrelevent2 = 怎么走 | 在哪里 | 那里 | 有哪些 |是几点 | 是多少 | 多少钱 | 如何走;  ";
 
-       String mLocalGrammar = "#BNF+IAT 1.0 UTF-8;\n" +
-               "!grammar call;\n" +
-               "!slot <want>;\n" +
-               "!slot <dialpre>;\n" +
-               "!slot <dialsuf>;\n" +
-               "!slot <contact>;\n" +
-               "!slot <dialcmd>;\n" +
-               "!start <callstart>;\n" +
-               "<callstart>:[<want>]<dial>|<dialcmd>;\n" +
-               "<want>:我想;\n" +
-               "<dialcmd>:打电话|打个电话|我想打电话|拨打电话|我要打电话|电话;\n" +
-               "<dial>:<dialpre><contact>[<dialsuf>];\n" +
-               "<dialpre>:打电话给|打个电话给|给|拨打;\n" +
-               "<dialsuf>:打电话|打个电话|的电话|的号码;\n" +
-               "<contact>:张海洋;";
+        String mLocalGrammar = "#BNF+IAT 1.0 UTF-8;\n" +
+                "!grammar call;\n" +
+                "!slot <want>;\n" +
+                "!slot <go>;\n" +
+                "!slot <location>;\n" +
+                "!slot <movement>;\n" +
+                "!slot <opera>;\n" +
+                "!slot <content>;\n" +
+                "!start <hotelstart>;\n" +
+                "<hotelstart>:[<want>] [<ask>] [酒店] [<Irrelevent1>] [酒店] [<go>] (<location> | <movement> | <opera> |<content> ) [<Irrelevent2>];\n" +
+                "<want>:我想 | 我需要;\n" +
+                "<ask>:知道 | 请问 | 问 | 了解;\n" +
+                "<go>:去 | 要 | 到 | 向 | 走;\n" +
+                "<Irrelevent1>:怎么 | 在哪里 |  有哪些 | 几点 |  哪里有 | 什么时候 | 如何 ;\n" +
+                "<movement>:前进 |后退 |原地左转| 原地右转 | 前进左转 | 前进右转;\n" +
+                "<opera>:点餐服务 | 洗衣服务  | 点餐 | 洗衣 | 用餐 | 退房 | 入住;\n" +
+                "<content>:入住时间 | 退房时间 | 押金 | 房型 | 入住 | 退房 | 用餐时间  | 洗衣时间 | 点餐时间 | 寄存行李;\n" +
+                "<Irrelevent2>:怎么走 | 在哪里 | 那里 | 有哪些 |是几点 | 是多少 | 多少钱 | 如何走 ;\n" +
+                "<location>:电梯 |楼梯 | 餐厅 | 中餐厅 | 西餐厅 |  健身房 | 会议室| 失物招领处 | 行李寄存处 | 附近银行 | 附近商场 | 附近机场 | 娱乐中心 | 咖啡馆 | 附近地铁;";
+
 
         // 语法、词典临时变量
         String mContent;
@@ -654,7 +659,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                     text = JsonParser.myParseGrammarResult(result.getResultString());
                     LogUtil.i(TAG, "recognizer result：" + text);
                 }else {
-                    text = JsonParser.parseLocalGrammarResult(result.getResultString());
+                    text = JsonParser.myParseLocalGrammarResult(result.getResultString());
                 }
 
                 // 显示
