@@ -44,7 +44,15 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="本地HBR语音识别" >
+            android:text="本地HBR识别" >
+        </RadioButton>
+
+        <RadioButton
+            android:id="@+id/asrXunfeiLocal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="讯飞离线识别" >
         </RadioButton>
     </RadioGroup>
 

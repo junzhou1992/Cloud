@@ -99,6 +99,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     private static final int  ASR_LOCAL= 2;
     private static final int  TTS_CLOUD= 3;
     private static final int  TTS_LOCAL= 4;
+    private static final int  ASR_XUNFEILIXIAN= 5;
 
     private static int tts_type = TTS_CLOUD;
     private static int asr_type =  ASR_MIX;
@@ -178,10 +179,18 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
     private void asr(int type){
         if (type == ASR_MIX) {
+            LogUtil.i("asr()" ,"asrtype:ASR_MIX" );
+             mEngineType = SpeechConstant.TYPE_CLOUD;
+           // mEngineType = SpeechConstant.TYPE_LOCAL;
             asrtest();  //云语法识别接口
            // startHbr740AsrThread();
-        } else {
+        } else if (type ==ASR_LOCAL){
+            LogUtil.i("asr()" ,"asrtype:ASR_LOCAL" );
             startHbr740AsrThread();
+        }else{
+            LogUtil.i("asr()" ,"asrtype:ASR_xunfeiLOCAL" );
+            mEngineType = SpeechConstant.TYPE_LOCAL;
+            asrtest();
         }
     }
 
@@ -190,8 +199,8 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     public static void checkNetwork(final Activity activity) {
         if (!IsInternet.isNetworkAvalible(activity)) {
                 LogUtil.i("checkNetwork " ,"当前没有可以使用的网络，请设置网络！"  );
-            tts_type = TTS_LOCAL;
-            asr_type = ASR_LOCAL;
+               tts_type = TTS_LOCAL;
+               asr_type = ASR_LOCAL;
 
         }else {
             LogUtil.i("checkNetwork " ,"当前有可用网络！"  );
@@ -264,9 +273,12 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         if (  asr_type ==  ASR_MIX){
             group.check(R.id.asrRadioMix);
             LogUtil.i("type", "asrRadioMix  " );
-        } else{
+        } else if (asr_type == ASR_LOCAL){
             group.check(R.id.asrRadioLocal);
             LogUtil.i("type", "asrRadioLocal  " );
+        }else {
+            group.check(R.id.asrXunfeiLocal);
+            LogUtil.i("type", "asrXunfeiLocal" );
         }
 
         group.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
@@ -280,6 +292,11 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                     case R.id.asrRadioMix:  //混合语音识别
                         LogUtil.i("RadioGroup", "asrRadioMix  " );
                         asr_type = ASR_MIX;
+                        break;
+
+                    case R.id.asrXunfeiLocal:  //讯飞离线语音识别
+                        LogUtil.i("RadioGroup", "asrXunfeiLocal" );
+                        asr_type = ASR_XUNFEILIXIAN;
                         break;
                     default:
                         break;
@@ -307,7 +324,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                         tts_type = TTS_LOCAL;
                         LogUtil.i("ttsRadioGroup", "asrRadioLocal  " );
                         break;
-                    case R.id.ttsRadioMix:  //混合语音合合成
+                    case R.id.ttsRadioMix:  //云语音合合成
                         LogUtil.i("ttsRadioGroup", "asrRadioMix  " );
                         tts_type = TTS_CLOUD ;
                         break;
@@ -461,7 +478,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
 
        // mEngineType = SpeechConstant.TYPE_CLOUD;
-        mEngineType = SpeechConstant.TYPE_LOCAL;
+        //mEngineType = SpeechConstant.TYPE_LOCAL;
 
         // 初始化识别对象
         mAsr = SpeechRecognizer.createRecognizer(SpeechActivity.this, mInitListener);
