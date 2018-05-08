@@ -200,7 +200,8 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         if (!IsInternet.isNetworkAvalible(activity)) {
                 LogUtil.i("checkNetwork " ,"当前没有可以使用的网络，请设置网络！"  );
                tts_type = TTS_LOCAL;
-               asr_type = ASR_LOCAL;
+               //asr_type = ASR_LOCAL;
+               asr_type = ASR_XUNFEILIXIAN;
 
         }else {
             LogUtil.i("checkNetwork " ,"当前有可用网络！"  );
@@ -677,10 +678,13 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                     LogUtil.i(TAG, "recognizer result：" + text);
                 }else {
                     text = JsonParser.myParseLocalGrammarResult(result.getResultString());
+
                 }
 
+               String answer = asrXunfeiResultProcess.resultProcess(text);
+
                 // 显示
-                et_input.setText(text);
+                et_input.setText(text + ":" + answer );
                 //if(text.equals("没有匹配结果."))
                 //{
                     //mAsr.stopListening();
@@ -690,7 +694,9 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                    // startVoiceNlp();  //没有匹配结果时就开始语义理解
                // } else{
                     //text = JsonParser.myParseGrammarResult(result.getResultString());
-                    asrResultProcess.resultProcess(text);
+                    //asrResultProcess.resultProcess(text);
+
+
                // }
 
 

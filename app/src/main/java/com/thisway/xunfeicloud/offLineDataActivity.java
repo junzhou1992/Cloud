@@ -106,7 +106,7 @@ public class offLineDataActivity extends AppCompatActivity implements View.OnCli
 
                 HSSFRow row = (HSSFRow) rows.next();
                 System.out.println("Row #" + row.getRowNum());
-                //每一行 = 新建一个学生
+                //每一行 = 新建一个类
                 RecognitionInstruction instruction11 = new RecognitionInstruction();
                 // Iterate over each cell in the row and print out the cell"s
                 // content
