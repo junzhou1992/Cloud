@@ -24,7 +24,7 @@ import java.util.Iterator;
 import java.util.List;
 
 public class offLineDataActivity extends AppCompatActivity implements View.OnClickListener {
-    private static final String TAG = SpeechActivity.class.getSimpleName();
+    private static final String TAG = offLineDataActivity.class.getSimpleName();
     private Button btn_createDB,btn_addData,btn_queryData, btn_deleteData;
 
 
@@ -59,21 +59,31 @@ public class offLineDataActivity extends AppCompatActivity implements View.OnCli
 
             case R.id.btn_addData://添加数据库数据
                 LogUtil.i(TAG, "btn_addData");
-                readExcel();
+                readXunfeiAsrExcel();
+                readInstructionsExcel();
+
                 break;
 
             case R.id.btn_queryData://查询数据库数据
                 LogUtil.i(TAG, "btn_queryData");
-                List<RecognitionInstruction> instructions = DataSupport.findAll(RecognitionInstruction.class);
+               List<RecognitionInstruction> instructions = DataSupport.findAll(RecognitionInstruction.class);
                 for (RecognitionInstruction instruction : instructions) {
 
                     Log.d("Data", " id is " + instruction.getId());
-                    Log.d("Data", " instuctionIDis " + instruction.getInstuctionID());
+                   Log.d("Data", " instuctionID is " + instruction.getInstuctionID());
                     Log.d("Data", " instruction is " + instruction.getInstruction());
                     Log.d("Data", "answer is " + instruction.getAnswer());
                 }
 
 
+                List<xunfeiAsr> xunfeiAsrs = DataSupport.findAll(xunfeiAsr.class);
+                for (xunfeiAsr xunfeiasr : xunfeiAsrs) {
+
+                    Log.d("Data", " id is " + xunfeiasr.getId());
+                    Log.d("Data", " keyID is " + xunfeiasr.getKeyID());
+                    Log.d("Data", " key is " + xunfeiasr.getKey());
+                    Log.d("Data", "answer is " + xunfeiasr.getAnswer());
+                }
 
                 break;
 
@@ -81,6 +91,7 @@ public class offLineDataActivity extends AppCompatActivity implements View.OnCli
             case R.id.btn_deleteData://删除数据库中的数据
                 LogUtil.i(TAG, "btn_deleteData");
                 DataSupport.deleteAll(RecognitionInstruction.class);
+                DataSupport.deleteAll(xunfeiAsr.class);
                 break;
 
         }
@@ -89,8 +100,8 @@ public class offLineDataActivity extends AppCompatActivity implements View.OnCli
 
     /******************************读取excel表*************************************/
 
-//读取Excel表
-    private void readExcel() {
+//读取InstructionsExcel表
+    private void readInstructionsExcel() {
 
         AssetManager assetManager = getResources().getAssets();
 
@@ -105,7 +116,7 @@ public class offLineDataActivity extends AppCompatActivity implements View.OnCli
             while (rows.hasNext()) {
 
                 HSSFRow row = (HSSFRow) rows.next();
-                System.out.println("Row #" + row.getRowNum());
+                LogUtil.i(TAG,"Row #" + row.getRowNum());
                 //每一行 = 新建一个类
                 RecognitionInstruction instruction11 = new RecognitionInstruction();
                 // Iterate over each cell in the row and print out the cell"s
@@ -132,7 +143,59 @@ public class offLineDataActivity extends AppCompatActivity implements View.OnCli
  ;
             }
 
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+        //刷新列表
+        //getAllStudent();
+    }
 
+
+    private void readXunfeiAsrExcel() {
+
+        AssetManager assetManager = getResources().getAssets();
+
+        try {
+            //InputStream input = new FileInputStream(new File(excelPath));
+            InputStream input = assetManager.open("xunfeiAsr.xls");
+            POIFSFileSystem fs = new POIFSFileSystem(input);
+            HSSFWorkbook wb = new HSSFWorkbook(fs);
+            HSSFSheet sheet = wb.getSheetAt(0);
+            // Iterate over each row in the sheet
+            Iterator<Row> rows = sheet.rowIterator();
+            while (rows.hasNext()) {
+
+                HSSFRow row = (HSSFRow) rows.next();
+                LogUtil.i(TAG,"Row #" + row.getRowNum());
+                System.out.println("Row #" + row.getRowNum());
+                //每一行 = 新建一个类
+                xunfeiAsr xunfeiAsr1 = new xunfeiAsr();
+               // RecognitionInstruction instruction11 = new RecognitionInstruction();
+
+                // Iterate over each cell in the row and print out the cell"s
+                // content
+                Iterator<Cell> cells = row.cellIterator();
+
+                HSSFCell cell_1 = (HSSFCell) cells.next();
+
+                LogUtil.i("xunfeiAsrEXCEL","number= " + (long) (cell_1.getNumericCellValue()));
+                if((long) (cell_1.getNumericCellValue()) == 0)
+                    break;
+                xunfeiAsr1.setKeyID((long) (cell_1.getNumericCellValue())); ;
+
+                HSSFCell cell_2 = (HSSFCell) cells.next();
+                LogUtil.i("xunfeiAsrEXCEL","string= " + cell_2.getStringCellValue());
+                xunfeiAsr1.setKey(cell_2.getStringCellValue());
+               // xunfeiAsr1.setInstruction(cell_2.getStringCellValue()) ;
+
+
+                HSSFCell cell_3 = (HSSFCell) cells.next();
+                LogUtil.i("xunfeiAsrEXCEL","string= " + cell_3.getStringCellValue());
+                xunfeiAsr1.setAnswer(cell_3.getStringCellValue()); ;
+
+                xunfeiAsr1.save();
+
+            }
 
         } catch (IOException ex) {
             ex.printStackTrace();

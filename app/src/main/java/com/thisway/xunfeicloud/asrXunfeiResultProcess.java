@@ -1,6 +1,11 @@
 package com.thisway.xunfeicloud;
 
 
+import android.util.Log;
+
+import org.litepal.crud.DataSupport;
+
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -11,14 +16,11 @@ import java.util.regex.Pattern;
 public class asrXunfeiResultProcess {
 
     private static final String TAG = asrXunfeiResultProcess.class.getSimpleName();
-    private static  int  result= 0;
+    private static  int  result = 0;
 
 
     public static String resultProcess(String text) {
-        // 这种产品是红色的还是蓝色的啊？
-        //这种产品是水货还是正品呢？
 
-        // 我们要提取“红色”“蓝色”和 “水货”，“正品”这些关键字
 
         LogUtil.i(TAG,"asrXunfeiResultProcess");
 
@@ -30,7 +32,10 @@ public class asrXunfeiResultProcess {
        // String reg = "\\w*" + "健身房" + "\\w*";
         //String reg = "\\w*" + key + "\\w*";
         String[] key = {"健身房", "电梯","楼梯", "餐厅","中餐厅", " 西餐厅","会议室", "失物招领处",
-                      "行李寄存处", "附近银行","附近商场", "附近机场","娱乐中心", " 咖啡馆","附近地铁"};
+                      "行李寄存处", "附近银行","附近商场", "附近机场","娱乐中心", " 咖啡馆","附近的地铁",
+                      " 点餐", "洗衣","用餐", "退房","入住","房型", "押金","寄存行李"," 商店","换房间",
+                      "延长住店","换币服务","叫醒服务","付款方式","优惠","房型",
+                      "前进", "后退","原地左转", " 原地右转","前进左转"," 前进右转",};
         for (int i = 0;i < key.length ;i++ )
         {
             String reg = "\\w*" + key[i] + "\\w*";
@@ -42,29 +47,20 @@ public class asrXunfeiResultProcess {
             {
                 result = i + 1;
                 LogUtil.i(TAG,""+result);
+                xunfeiAsr xunfeiasr = DataSupport.find(xunfeiAsr.class,result);
+                Log.d("Data", " id is " + xunfeiasr.getId());
+                Log.d("Data", " keyID is " + xunfeiasr.getKeyID());
+                Log.d("Data", " key is " + xunfeiasr.getKey());
+                Log.d("Data", "answer is " + xunfeiasr.getAnswer());
+                ret.append( xunfeiasr.getAnswer()) ;
                 break;
             }
         }
 
-
-
-
-        switch(result){
-            case 0:
-                LogUtil.i(TAG, "没有匹配结果");
-                ret.append( "没有匹配结果.") ;
-                break;
-
-            case 1:
-                LogUtil.i(TAG, "发送健身房的数据");
-                ret.append( "发送健身房的数据") ;
-                break;
-
-            case 2:
-                LogUtil.i(TAG, "发送楼梯的数据");
-                ret.append( "发送楼梯的数据") ;
-                break;
-
+        if (result == 0)
+        {
+            Log.d("Data", "result ==0" );
+            ret.append( "无法回答，请转语义理解") ;
         }
 
         return ret.toString();

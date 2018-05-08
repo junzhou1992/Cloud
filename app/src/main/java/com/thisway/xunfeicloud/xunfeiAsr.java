@@ -10,17 +10,12 @@ public class xunfeiAsr extends DataSupport {
 
     private  long id;
 
-    private long instuctionID;
+
+
+    private long keyID;
     private String key;
     private String answer;
 
-    public long getInstuctionID() {
-        return instuctionID;
-    }
-
-    public void setInstuctionID(long instuctionID) {
-        this.instuctionID = instuctionID;
-    }
 
     public long getId() {
         return id;
@@ -29,6 +24,15 @@ public class xunfeiAsr extends DataSupport {
     public void setId(long id) {
         this.id = id;
     }
+
+    public long getKeyID() {
+        return keyID;
+    }
+
+    public void setKeyID(long keyID) {
+        this.keyID = keyID;
+    }
+
 
     public String getKey() {
         return key;
