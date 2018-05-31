@@ -44,13 +44,6 @@ import com.iflytek.cloud.util.ResourceUtil;
 import com.thisway.hardlibrary.hbr740_control;
 import com.thisway.hardlibrary.syn6288_control;
 
-import org.apache.poi.hssf.usermodel.HSSFCell;
-import org.apache.poi.hssf.usermodel.HSSFRow;
-import org.apache.poi.hssf.usermodel.HSSFSheet;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.poifs.filesystem.POIFSFileSystem;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.litepal.LitePal;
@@ -73,8 +66,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     private  final String GRAMMAR_TYPE_BNF = "bnf";
 
     // 本地语法构建路径
-    private String grmPath = Environment.getExternalStorageDirectory()
-            .getAbsolutePath() + "/msc/test";
+    private String grmPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/msc/test";
 
 
     private EditText et_input;
@@ -124,30 +116,27 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                     et_input.setText("open_hbr740_right");
                     break;
                 case HBR740_Asr_NO_ANSWER:
-                    et_input.setText("HBR740_Asr_NO_ANSWER");
+                    et_input.setText("无法识别问题：无法回答");
+                    s =  "无法回答这个问题";
+                    tts(tts_type);
                     break;
                 case HBR740_Asr_ANSWER:
-
                     int result = msg.arg1;
                     RecognitionInstruction     recognitionInstruction   =DataSupport.find(RecognitionInstruction.class,result);
                     Log.d("Data", " id is " + recognitionInstruction.getId());
                     Log.d("Data", " instuctionIDis " + recognitionInstruction.getInstuctionID());
                     Log.d("Data", " instruction is " + recognitionInstruction.getInstruction());
                     Log.d("Data", "answer is " + recognitionInstruction.getAnswer());
-
-                    et_input.setText(  recognitionInstruction.getInstruction() +  recognitionInstruction.getAnswer() );
+                    et_input.setText(  recognitionInstruction.getInstruction() + ":" +  recognitionInstruction.getAnswer() );
+                    s =  recognitionInstruction.getAnswer();
+                    tts(tts_type);
 
                     break;
                 default:
                     break;
-
-
             }
-
         }
     }
-
-
 
 
     @Override
@@ -155,7 +144,6 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         super.onCreate(savedInstanceState);
         LogUtil.e(TAG,"onCreate");
         mSharedPreferences = getSharedPreferences(settingFragment.PREFER_NAME, MODE_PRIVATE);
-
         mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
         checkNetwork(this);
         initView() ;
@@ -164,57 +152,9 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         syn6288_control.open_syn6288();
         Looper looper = Looper.myLooper();
         messageHandler = new MessageHandler(looper);
+        asrXunfei();
         tts(tts_type);
-
     }
-
-    private  void tts(int type){
-
-        if (type == TTS_CLOUD){
-            speekText(s);
-        } else {
-            syn6288(s);
-        }
-    }
-
-    private void asr(int type){
-        if (type == ASR_MIX) {
-            LogUtil.i("asr()" ,"asrtype:ASR_MIX" );
-             mEngineType = SpeechConstant.TYPE_CLOUD;
-           // mEngineType = SpeechConstant.TYPE_LOCAL;
-            asrtest();  //云语法识别接口
-           // startHbr740AsrThread();
-        } else if (type ==ASR_LOCAL){
-            LogUtil.i("asr()" ,"asrtype:ASR_LOCAL" );
-            startHbr740AsrThread();
-        }else{
-            LogUtil.i("asr()" ,"asrtype:ASR_xunfeiLOCAL" );
-            mEngineType = SpeechConstant.TYPE_LOCAL;
-            asrtest();
-        }
-    }
-
-
-    // 如果没有网络，则弹出网络设置对话框
-    public static void checkNetwork(final Activity activity) {
-        if (!IsInternet.isNetworkAvalible(activity)) {
-                LogUtil.i("checkNetwork " ,"当前没有可以使用的网络，请设置网络！"  );
-               tts_type = TTS_LOCAL;
-               //asr_type = ASR_LOCAL;
-               asr_type = ASR_XUNFEILIXIAN;
-
-        }else {
-            LogUtil.i("checkNetwork " ,"当前有可用网络！"  );
-            tts_type = TTS_CLOUD;
-            asr_type =  ASR_MIX;
-        }
-
-    }
-
-
-
-
-
 
 
     //重写onCreateOptionsMenu方法
@@ -252,7 +192,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         return true;
     }
 
-
+    /******************************初始化界面*************************************/
     private void initView() {
         setContentView(R.layout.activity_speech) ;
         Toolbar toolbar = (Toolbar) findViewById(R.id.toobar);
@@ -263,12 +203,10 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         btn_startrecognize = (Button) findViewById(R.id.btn_startrecognize );
         btn_startnlp = (Button) findViewById(R.id.btn_startnlp );
 
-
         btn_celnlp .setOnClickListener(this) ;
         btn_startspeektext .setOnClickListener(this) ;
         btn_startrecognize.setOnClickListener(this);
         btn_startnlp.setOnClickListener(this);
-
 
         RadioGroup group = (RadioGroup) findViewById(R.id.asrRadioGroup);
         if (  asr_type ==  ASR_MIX){
@@ -305,7 +243,6 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
             }
         });
 
-
         RadioGroup group2 = (RadioGroup) findViewById(R.id.ttsRadioGroup);
         if (  tts_type == TTS_CLOUD){
             group2.check(R.id.ttsRadioMix);
@@ -315,8 +252,6 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
             LogUtil.i("type", "ttsRadioLocal " );
         }
 
-
-        //group2.check(R.id.ttsRadioMix);
         group2.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
@@ -334,10 +269,53 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 }
             }
         });
+    }
 
+    /******************************语音识别和语音合成函数入口*************************************/
+    private  void tts(int type){
+
+        if (type == TTS_CLOUD){
+            speekText(s);
+        } else {
+            syn6288(s);
+        }
+    }
+
+    private void asr(int type){
+        if (type == ASR_MIX) {
+            LogUtil.i("asr()" ,"asrtype:ASR_MIX" );
+            mEngineType = SpeechConstant.TYPE_CLOUD;
+            //asrXunfei();  //讯飞语法识别接口
+            xunfeiAsrstart();
+            // startHbr740AsrThread();
+        } else if (type ==ASR_LOCAL){
+            LogUtil.i("asr()" ,"asrtype:ASR_LOCAL" );
+            startHbr740AsrThread();
+        }else{
+            LogUtil.i("asr()" ,"asrtype:ASR_xunfeiLOCAL" );
+            mEngineType = SpeechConstant.TYPE_LOCAL;
+            //asrXunfei();
+            xunfeiAsrstart();
+        }
     }
 
 
+    /******************************根据网络状况选择语音识别和语音合成的类型*************************************/
+    public static void checkNetwork(final Activity activity) {
+        if (!IsInternet.isNetworkAvalible(activity)) {
+            LogUtil.i("checkNetwork " ,"当前没有可以使用的网络，请设置网络！"  );
+            tts_type = TTS_LOCAL;
+            //asr_type = ASR_LOCAL;
+            asr_type = ASR_XUNFEILIXIAN;
+
+        }else {
+            LogUtil.i("checkNetwork " ,"当前有可用网络！"  );
+            tts_type = TTS_CLOUD;
+            asr_type =  ASR_MIX;
+        }
+    }
+
+    /******************************监听界面上的按钮*************************************/
 
     @Override
     public void onClick(View view) {
@@ -357,13 +335,11 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
             case R.id.btn_startrecognize://语法识别（完成语音命令的识别）
                 asr(asr_type);
                 break;
-
-
         }
 
     }
 
-    /******************************本地SYN6288*************************************/
+    /******************************本地语音合成SYN6288*************************************/
     private void syn6288(String str) {
         byte[] speakText = {};
         Log.i(TAG, "onClick: start_tts");
@@ -376,7 +352,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     }
 
 
-    /******************************本地HBR*************************************/
+    /******************************本地语音识别HBR*************************************/
 
     private void startHbr740AsrThread() {
         et_input.setText("hrb_asr ing");
@@ -432,76 +408,23 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
 
 
-/**********************云语法识别*************************/
+/***************************************************讯飞语法识别（离线和在线）******************************************************/
     //语法识别
-    private void asrtest() {
-// 云端语法文件
-        String mCloudGrammar = "#ABNF 1.0 UTF-8;\n" +
-                "                         language zh-CN;\n" +
-                "                          mode voice;\n" +
-                "        root $main;\n" +
-                "        $main =[我] [$want]  [$ask]  [酒店] [$Irrelevent1] [酒店] [$go] ( $movement | $opera | $location | $content) [$Irrelevent2] ;\n" +
-                "        $want = 想 | 需要 | 可以;\n" +
-                "        $ask = 知道 | 请问 | 问 | 了解;\n" +
-                "        $Irrelevent1 = 怎么 | 在哪里 |  有哪些 | 几点 |  哪里有 | 什么时候 | 如何 ;\n"+
-                "        $go = 去 | 要 | 到 | 向 | 走;\n" +
-                "        $movement = 前进 |后退 |原地左转| 原地右转 | 前进左转 | 前进右转 ;\n" +
-                "        $opera = 点餐服务 | 洗衣服务  | 点餐 | 洗衣 | 用餐 | 退房 | 入住;\n" +
-                "        $content = 入住时间 | 退房时间 | 押金 | 房型 | 入住 | 退房 | 用餐时间  | 洗衣时间 | 点餐时间 | 寄存行李;\n" +
-                "        $location = 电梯 |楼梯 | 餐厅 | 中餐厅 | 西餐厅 |  健身房 |  会议室 | 失物招领处 | 行李寄存处 | 附近银行 | 附近商场 | 附近机场 | 娱乐中心 | 咖啡馆 | 附近地铁;\n" +
-                "        $Irrelevent2 = 怎么走 | 在哪里 | 那里 | 有哪些 |是几点 | 是多少 | 多少钱 | 如何走;  ";
-
-        String mLocalGrammar = "#BNF+IAT 1.0 UTF-8;\n" +
-                "!grammar call;\n" +
-                "!slot <want>;\n" +
-                "!slot <go>;\n" +
-                "!slot <location>;\n" +
-                "!slot <movement>;\n" +
-                "!slot <opera>;\n" +
-                "!slot <content>;\n" +
-                "!start <hotelstart>;\n" +
-                "<hotelstart>:[<want>] [<ask>] [酒店] [<Irrelevent1>] [酒店] [<go>] (<location> | <movement> | <opera> |<content> ) [<Irrelevent2>];\n" +
-                "<want>:我想 | 我需要;\n" +
-                "<ask>:知道 | 请问 | 问 | 了解;\n" +
-                "<go>:去 | 要 | 到 | 向 | 走;\n" +
-                "<Irrelevent1>:怎么 | 在哪里 |  有哪些 | 几点 |  哪里有 | 什么时候 | 如何 ;\n" +
-                "<movement>:前进 |后退 |原地左转| 原地右转 | 前进左转 | 前进右转;\n" +
-                "<opera>:点餐服务 | 洗衣服务  | 点餐 | 洗衣 | 用餐 | 退房 | 入住 | 换房间 | 延长住店 | 换币服务 |叫醒服务 | 付款方式| 优惠 ;\n" +
-                "<content>:入住时间 | 退房时间 | 押金 | 房型 | 入住 | 退房 | 用餐时间  | 洗衣时间 | 点餐时间 | 寄存行李;\n" +
-                "<Irrelevent2>:怎么走 | 在哪里 | 那里 | 有哪些 |是几点 | 是多少 | 多少钱 | 如何走 | 吗;\n" +
-                "<location>:电梯 |楼梯 | 餐厅 | 中餐厅 | 西餐厅 |  健身房 | 会议室| 失物招领处 | 行李寄存处 | 附近银行 | 附近商场 | 附近机场 | 娱乐中心 | 咖啡馆 | 附近地铁;";
-
+    private void asrXunfei() {
+        //初始化语法  命令词
+        String mLocalGrammar = FucUtil.readFile(this,"call.bnf", "utf-8");
+        String mCloudGrammar = FucUtil.readFile(this,"grammar_sample.abnf","utf-8");
 
         // 语法、词典临时变量
         String mContent;
         // 函数调用返回值
         int ret = 0;
 
-
-       // mEngineType = SpeechConstant.TYPE_CLOUD;
-        //mEngineType = SpeechConstant.TYPE_LOCAL;
-
         // 初始化识别对象
         mAsr = SpeechRecognizer.createRecognizer(SpeechActivity.this, mInitListener);
 
-        //初始化语法  命令词
-        //mCloudGrammar = FucUtil.readFile(this,"grammar_sample.abnf","utf-8");
-        //mLocalGrammar = FucUtil.readFile(this,"call.bnf", "utf-8");
-
         mSharedPreferences_asr = getSharedPreferences(getPackageName(),	MODE_PRIVATE);
 
-        // mContent = new String(mCloudGrammar);
-
-       // mAsr.setParameter(SpeechConstant.TEXT_ENCODING,"utf-8");
-       // ret = mAsr.buildGrammar(GRAMMAR_TYPE_ABNF, mCloudGrammar, mCloudGrammarListener);
-       // if(ret != ErrorCode.SUCCESS)
-            //showTip("语法构建失败,错误码：" + ret);
-        //设置参数（指定引擎类型 grammarId ）
-       //mAsr.setParameter(SpeechConstant.ENGINE_TYPE, mEngineType);
-        //String grammarId = mSharedPreferences_asr.getString(KEY_GRAMMAR_ABNF_ID, null);
-       // mAsr.setParameter(SpeechConstant.CLOUD_GRAMMAR, grammarId);
-
-       // showTip("上传预设关键词/语法文件");
         LogUtil.i("asr","语法文件");
         // 本地-构建语法文件，生成语法id
         if (mEngineType.equals(SpeechConstant.TYPE_LOCAL)) {
@@ -536,23 +459,27 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                 showTip("语法构建失败,错误码：" + ret);
         }
 
-        if (!setAsrParam()) {
-            showTip("请先构建语法。");
-            return;
-        };
-
-        ret = mAsr.startListening(mRecognizerListener);
-        if (ret != ErrorCode.SUCCESS) {
-            showTip("识别失败,错误码: " + ret);
-        }
-
+        //xunfeiAsrstart();
         return;
 
     }
 
 
+    private void xunfeiAsrstart(){
+        if (!setAsrParam()) {
+            showTip("请先构建语法。");
+            return;
+        };
+
+       int  asrStatus = mAsr.startListening(mRecognizerListener);
+        if (asrStatus != ErrorCode.SUCCESS) {
+            showTip("识别失败,错误码: " + asrStatus);
+        }
+    }
+
+
     /**
-     * 参数设置
+     * 语法识别参数设置
      * @param param
      * @return
      */
@@ -564,23 +491,18 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         mAsr.setParameter(SpeechConstant.ENGINE_TYPE, mEngineType);
         if("cloud".equalsIgnoreCase(mEngineType))
         {
-
-            //String grammarId = mSharedPreferences_asr.getString(KEY_GRAMMAR_ABNF_ID, null);
-
             String grammarId =  mSharedPreferences_asr.getString(KEY_GRAMMAR_ABNF_ID, null);
             if(TextUtils.isEmpty(grammarId))
             {
                 result =  false;
             }else {
-                // 设置返回结果格式
-               // mAsr.setParameter(SpeechConstant.RESULT_TYPE, mResultType);
+
                 // 设置云端识别使用的语法id
                 mAsr.setParameter(SpeechConstant.CLOUD_GRAMMAR, grammarId);
                 result =  true;
             }
         }
-        else
-        {
+        else {
             // 设置本地识别资源
             mAsr.setParameter(ResourceUtil.ASR_RES_PATH, getResourcePath());
             // 设置语法构建路径
@@ -653,7 +575,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
 
     /**
-     * 识别监听器。
+     * 云语法识别监听器。
      */
     private RecognizerListener mRecognizerListener = new RecognizerListener() {
 
@@ -668,23 +590,50 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
             LogUtil.d("语法识别","onResult");
             if (null != result) {
                 LogUtil.i(TAG, "recognizer result：" + result.getResultString());
-                // 有匹配结果时recognizer result：{"sn":1,"ls":true,"bg":0,"ed":0,"ws":[{"bg":0,"cw":[{"sc":"58","gm":"0","w":"去中心楼"},{"sc":"54","gm":"0","w":"中心楼"},{"sc":"51","gm":"0","w":"我去中心楼"}]}]}
-                //没有匹配结果时 recognizer result：{"sn":1,"ls":true,"bg":0,"ed":0,"ws":[{"bg":0,"cw":[{"sc":"91","gm":"0","w":"nomatch:out-of-voca","mn":[{"id":"nomatch","name":"nomatch:out-of-voca"}]}]}]}
+                // 云语法识别有匹配结果时recognizer result：{"sn":1,"ls":true,"bg":0,"ed":0,"ws":[{"bg":0,"cw":[{"sc":"58","gm":"0","w":"去中心楼"},{"sc":"54","gm":"0","w":"中心楼"},{"sc":"51","gm":"0","w":"我去中心楼"}]}]}
+                //云语法识别没有匹配结果时 recognizer result：{"sn":1,"ls":true,"bg":0,"ed":0,"ws":[{"bg":0,"cw":[{"sc":"91","gm":"0","w":"nomatch:out-of-voca","mn":[{"id":"nomatch","name":"nomatch:out-of-voca"}]}]}]}
 
                 String text ;
                 if("cloud".equalsIgnoreCase(mEngineType)){
-                    //text = JsonParser.parseGrammarResult(result.getResultString());
+
                     text = JsonParser.myParseGrammarResult(result.getResultString());
                     LogUtil.i(TAG, "recognizer result：" + text);
                 }else {
                     text = JsonParser.myParseLocalGrammarResult(result.getResultString());
-
                 }
 
-               String answer = asrXunfeiResultProcess.resultProcess(text);
-
-                // 显示
+                String answer = asrXunfeiResultProcess.resultProcess(text);
                 et_input.setText(text + ":" + answer );
+               mAsr.stopListening();
+                showTip("停止识别");
+                s = answer;
+                tts(tts_type);
+               if (text.equals("没有匹配结果")) {
+                  LogUtil.i("tts","没有匹配结果");
+                   et_input.setText("");
+                   new Thread() {
+                       @Override
+                       public void run() {
+                           super.run();
+                           try {
+                               Thread.sleep(7000);//休眠7秒
+                           } catch (InterruptedException e) {
+                               e.printStackTrace();
+                           }
+                           /**
+                            * 要执行的操作
+                            */
+
+                         startVoiceNlp();
+                       }
+                   }.start();
+                  //startVoiceNlp();
+                }else{
+                   // s = answer;
+                   // tts(tts_type);
+                }
+
+
                 //if(text.equals("没有匹配结果."))
                 //{
                     //mAsr.stopListening();
@@ -695,11 +644,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                // } else{
                     //text = JsonParser.myParseGrammarResult(result.getResultString());
                     //asrResultProcess.resultProcess(text);
-
-
                // }
-
-
 
             } else {
                 Log.d(TAG, "recognizer result : null");
@@ -738,6 +683,8 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
     };
 
+    /***************************************************讯飞云语义理解******************************************************/
+
     private void createAgent() {
         if (null == mAIUIAgent) {
             LogUtil.i(TAG,getString(R.string.createAIUI));
@@ -755,7 +702,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
     }
 
     /*
-    * 这段其实是填写上自己的APPID
+    *填写上自己的APPID，语义理解参数设置
     * */
     private String getAIUIParams() {
         String params = "";
@@ -772,7 +719,6 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
             //   close() 关闭此输入流并释放与该流关联的所有系统资源。
 
             params = new String(buffer);
-            //String(byte[] bytes)  通过使用平台的默认字符集解码指定的 byte 数组，构造一个新的 String。
 
             //LogUtil.i(TAG,params);
             JSONObject paramsJson = new JSONObject(params);  //以params来构建JSONObject
@@ -820,7 +766,6 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                         JSONObject bizParamJson = new JSONObject(event.info);
                         //String info =  bizParamJson.toString();
                        // LogUtil.e( TAG, "info:"+ info );
-
 
                         JSONObject data = bizParamJson.getJSONArray("data").getJSONObject(0);
                         JSONObject params = data.getJSONObject("params");
@@ -876,11 +821,8 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                                         //只是当无返回值时，getString(String name)抛出错误，optString(String name)返回空值
 
                                         // if(text.equals("语法识别"))
-                                            //stopVoiceNlp();
-                                            // asrtest();
                                          // asr(asr_type);
                                         //自定义问答中定义了语法识别  如果是客户说了语法识别 就进入语法识别中
-
 
                                     } else {
                                         text = getString(R.string.noanswer);
@@ -924,8 +866,6 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                         LogUtil.i(TAG,"" + event.arg2);//音量大小
                     }
                 } break;
-
-
 
                 case AIUIConstant.EVENT_START_RECORD: {
                     LogUtil.i(TAG,getString(R.string.START_RECORD));
@@ -985,7 +925,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         }
 
         LogUtil.i( TAG, "start voice nlp" );
-        et_input.setText("");
+        //et_input.setText("");
 
         // 先发送唤醒消息，改变AIUI内部状态，只有唤醒状态才能接收语音输入
         // 默认为oneshot模式，即一次唤醒后就进入休眠。可以修改aiui_phone.cfg中speech参数的interact_mode为continuous以支持持续交互
@@ -1018,7 +958,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
     }
 
-
+    /***************************************************讯飞云语音合成******************************************************/
 
     private void speekText(String text) {
         //1. 创建 SpeechSynthesizer 对象 , 第二个参数： 本地合成时传 InitListener
@@ -1026,27 +966,16 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
         // 云端发音人名称列表
         mCloudVoicersEntries = getResources().getStringArray(R.array.voicer_cloud_entries);
         mCloudVoicersValue = getResources().getStringArray(R.array.voicer_cloud_values);
-//2.合成参数设置，详见《 MSC Reference Manual》 SpeechSynthesizer 类
-//设置发音人（更多在线发音人，用户可参见 附录 13.2
+      //2.合成参数设置，详见《 MSC Reference Manual》 SpeechSynthesizer 类
+      //设置发音人（更多在线发音人，用户可参见 附录 13.2
         setParam();
-
-       // mTts.setParameter(SpeechConstant. VOICE_NAME, "vixyun" ); // 设置发音人
-       // mTts.setParameter(SpeechConstant. SPEED, "50" );// 设置语速
-        //mTts.setParameter(SpeechConstant. VOLUME, "80" );// 设置音量，范围 0~100
-        //mTts.setParameter(SpeechConstant. ENGINE_TYPE, SpeechConstant. TYPE_CLOUD); //设置云端
-//设置合成音频保存位置（可自定义保存位置），保存在 “./sdcard/iflytek.pcm”
-//保存在 SD 卡需要在 AndroidManifest.xml 添加写 SD 卡权限
-//仅支持保存为 pcm 和 wav 格式， 如果不需要保存合成音频，注释该行代码
-        //mTts.setParameter(SpeechConstant. TTS_AUDIO_PATH, "./sdcard/iflytek.pcm" );
-//3.开始合成
-        //String text = et_input.getText().toString();
+       //3.开始合成
+        // String text = et_input.getText().toString();
         int code = mTts.startSpeaking( text, new MySynthesizerListener()) ;
         if (code != ErrorCode.SUCCESS) {
             LogUtil.e(TAG,"语音合成失败,错误码: " + code);
             showTip("语音合成失败,错误码: " + code);
         }
-
-
     }
 
     class MySynthesizerListener implements SynthesizerListener {
@@ -1108,7 +1037,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
 
     /**
-     * 参数设置
+     * 语音合成参数设置
      * @return
      */
     private void setParam(){
@@ -1145,11 +1074,10 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
 
     private int selectedNum = 0;
     /**
-     * 发音人选择。
+     * 语音合成发音人选择。
      */
     private void showPresonSelectDialog() {
-
-            // 在线合成发音人选择
+        // 在线合成发音人选择
                 new AlertDialog.Builder(this).setTitle("在线合成发音人选项")
                         .setSingleChoiceItems(mCloudVoicersEntries, // 单选框有几项,各是什么名字
                                 selectedNum, // 默认的选项
@@ -1161,9 +1089,7 @@ public class SpeechActivity extends AppCompatActivity implements View.OnClickLis
                                         dialog.dismiss();
                                     }
                                 }).show();
-
     }
-
 
     @Override
     protected void onPause() {

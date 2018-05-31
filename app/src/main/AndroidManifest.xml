@@ -34,20 +34,20 @@
         <activity
             android:name=".SpeechActivity"
             android:label="@string/mainActivity_name">
-
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-
         </activity>
+
         <activity android:name=".settingActivity">
         </activity>
+
         <activity android:name=".MainActivity">
 
-
         </activity>
+
         <activity
             android:name=".offLineDBActivity"
             android:label="@string/title_activity_off_line_db"
